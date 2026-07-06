@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+}
+
+:root {
+  /* Light Theme Variables */
+  --background: #f8fafc; /* Soft slate gray light */
+  --foreground: #0f172a; /* Slate 900 */
+  
+  --primary: #059669; /* Emerald 600 */
+  --primary-foreground: #ffffff;
+  
+  --accent: #f1f5f9; /* Slate 100 */
+  --muted: #e2e8f0; /* Slate 200 */
+  --muted-foreground: #475569; /* Slate 600 */
+  
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  
+  --border: #e2e8f0;
+}
+
+.dark {
+  /* Professional Dark Theme Variables (Default) */
+  --background: #090d16; /* Charcoal Black / Dark Blue-Gray */
+  --foreground: #f8fafc; /* Ice White */
+  
+  --primary: #10b981; /* Emerald Green 500 */
+  --primary-foreground: #090d16;
+  
+  --accent: #1e293b; /* Slate 800 (Slate Gray) */
+  --muted: #111827; /* Dark Gray */
+  --muted-foreground: #94a3b8; /* Slate 400 */
+  
+  --card: #111827;
+  --card-foreground: #f8fafc;
+  
+  --border: #1e293b;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom micro-animations & utilities */
+.transition-all-300 {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+/* ─── Smooth Scroll ─────────────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ─── Custom Scrollbar ──────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* ─── Focus Visible ─────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── GPU Optimization for Framer Motion ────── */
+.motion-safe {
+  will-change: transform, opacity;
+}
+
+/* ─── Framer Motion: Reduce motion for accessibility ── */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Text selection accent ─────────────────── */
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+

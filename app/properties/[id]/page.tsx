@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { 
   Building, 
@@ -12,63 +12,163 @@ import {
   ChevronRight,
   Sparkles
 } from "lucide-react";
-import PropertyCard, { formatPKR, Property } from "@/components/property/PropertyCard";
+import PropertyCard, { Property } from "@/components/property/PropertyCard";
 import PropertySidebarActions from "@/components/property/PropertySidebarActions";
 
-import { isValidObjectId } from "@/lib/utils";
+import { isValidObjectId, formatPKR } from "@/lib/utils";
 
 import RecentlyViewedTracker from "@/components/property/RecentlyViewedTracker";
+
+import { Metadata } from "next";
 
 interface PropertyDetailsPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function PropertyDetailsPage({ params }: PropertyDetailsPageProps) {
-  const { id: propertyId } = await params;
+export async function generateMetadata(
+  { params }: PropertyDetailsPageProps
+): Promise<Metadata> {
+  try {
+    const { id: propertyId } = await params;
+    
+    if (!propertyId || !isValidObjectId(propertyId)) {
+      return {
+        title: "Property Not Found | Peshawar Property Hub",
+        description: "The requested property listing was not found.",
+      };
+    }
 
-  // Validate ObjectId for MongoDB
-  if (!isValidObjectId(propertyId)) {
-    notFound();
+    const property = await db.property.findUnique({
+      where: { id: propertyId },
+      select: { title: true, description: true, area: true, city: true, imageUrls: true },
+    });
+
+    if (!property) {
+      return {
+        title: "Property Not Found | Peshawar Property Hub",
+        description: "The requested property listing was not found.",
+      };
+    }
+
+    const description = property.description.substring(0, 160) + "...";
+    const image = property.imageUrls?.[0] || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1000&q=80";
+
+    return {
+      title: `${property.title} in ${property.area}, ${property.city} | Peshawar Property Hub`,
+      description,
+      openGraph: {
+        title: property.title,
+        description,
+        images: [{ url: image }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: property.title,
+        description,
+        images: [image],
+      },
+    };
+  } catch (error) {
+    console.error("Error generating metadata in property page:", error);
+    return {
+      title: "Property Details | Peshawar Property Hub",
+      description: "Explore premium property listings in Peshawar.",
+    };
+  }
+}
+
+export default async function PropertyDetailsPage({ params }: PropertyDetailsPageProps) {
+  let propertyId = "";
+  try {
+    const resolvedParams = await params;
+    propertyId = resolvedParams?.id || "";
+    console.log("PROPERTY DETAIL LOOKUP START:", { propertyId, resolvedParams });
+  } catch (error) {
+    console.error("Error resolving route params:", error);
+    redirect("/properties");
   }
 
-  // 1. Fetch property by ID
-  const property = await db.property.findUnique({
-    where: { id: propertyId },
-    include: {
-      owner: {
-        select: {
-          name: true,
-          email: true,
-          phone: true,
-          profileImage: true,
-          image: true,
-          role: true,
+  // Validate ObjectId for MongoDB. Redirect to search page on invalid IDs
+  if (!propertyId || !isValidObjectId(propertyId)) {
+    console.warn("Invalid ObjectId provided to property details route, redirecting:", propertyId);
+    redirect("/properties");
+  }
+
+  let property = null;
+  let relatedProperties: any[] = [];
+
+  try {
+    // 1. Fetch property by ID
+    property = await db.property.findUnique({
+      where: { id: propertyId },
+      include: {
+        owner: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+            profileImage: true,
+            image: true,
+            role: true,
+          },
         },
       },
-    },
-  });
+    });
+
+    console.log("PROPERTY DETAIL DB RESPONSE:", { 
+      propertyId, 
+      found: !!property,
+      title: property?.title 
+    });
+
+    if (property) {
+      // Increment view count (fire-and-forget — don't block page render)
+      db.property.update({
+        where: { id: propertyId },
+        data: { views: { increment: 1 } },
+      }).catch((e) => {
+        console.error("Silent view counter increment error:", e);
+      });
+
+      // 2. Fetch related properties (same area/locality, excluding current property)
+      relatedProperties = await db.property.findMany({
+        where: {
+          area: property.area,
+          NOT: { id: property.id },
+        },
+        take: 3,
+        include: {
+          owner: {
+            select: {
+              name: true,
+              profileImage: true,
+              image: true,
+            },
+          },
+        },
+      });
+    }
+  } catch (dbError: any) {
+    console.error("Prisma/MongoDB query execution failed in property lookup:", dbError);
+  }
 
   if (!property) {
-    notFound();
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-4 text-center px-4">
+        <Building className="h-16 w-16 text-muted-foreground/60 animate-pulse" />
+        <h1 className="text-3xl font-black text-foreground">Property Not Found</h1>
+        <p className="text-muted-foreground text-sm max-w-md leading-relaxed">
+          The property listing you requested is not available. It may have been deleted, unapproved by moderators, or is no longer listed.
+        </p>
+        <Link 
+          href="/properties" 
+          className="mt-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/95 shadow-md shadow-primary/20 transition-all duration-300"
+        >
+          Browse All Properties
+        </Link>
+      </div>
+    );
   }
-
-  // 2. Fetch related properties (same area/locality, excluding current property)
-  const relatedProperties = await db.property.findMany({
-    where: {
-      area: property.area,
-      NOT: { id: property.id },
-    },
-    take: 3,
-    include: {
-      owner: {
-        select: {
-          name: true,
-          profileImage: true,
-          image: true,
-        },
-      },
-    },
-  });
 
   const formattedPrice = formatPKR(property.price);
   const postedDate = new Date(property.createdAt).toLocaleDateString("en-PK", {

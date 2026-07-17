@@ -257,7 +257,7 @@ export default function ProfilePage() {
                   type="url"
                   value={form.profileImage}
                   onChange={(e) => setForm((p) => ({ ...p, profileImage: e.target.value }))}
-                  placeholder="https://cloudinary.com/your-image.jpg"
+                  placeholder="https://example.com/your-photo.jpg"
                   className="w-full h-12 pl-10 pr-4 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
                 />
               </div>

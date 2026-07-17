@@ -3,9 +3,12 @@
 import { useState, useEffect } from "react";
 import { 
   Users, Building2, Eye, Trash2, CheckCircle2, XCircle, Search, 
-  ShieldAlert, RefreshCw, Layers, Sparkles, ShieldCheck
+  ShieldAlert, RefreshCw, Layers, Sparkles, ShieldCheck,
+  TrendingUp, Activity, ShieldAlert as AlertIcon,
+  CheckCircle, AlertTriangle, X
 } from "lucide-react";
-import { formatPKR } from "@/components/property/PropertyCard";
+import { formatPKR } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface User {
   id: string;
@@ -43,6 +46,12 @@ interface Stats {
   recentProperties: Property[];
 }
 
+interface Toast {
+  message: string;
+  type: "success" | "error" | "info";
+  id: string;
+}
+
 export default function AdminDashboardClient() {
   const [activeTab, setActiveTab] = useState<"overview" | "properties" | "users">("overview");
   const [stats, setStats] = useState<Stats | null>(null);
@@ -57,6 +66,29 @@ export default function AdminDashboardClient() {
   const [loadingProperties, setLoadingProperties] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
 
+  // Custom inline modals and toasts
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    danger?: boolean;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { message, type, id }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
   // Fetch Stats (Overview)
   const fetchStats = async () => {
     setLoadingStats(true);
@@ -65,9 +97,12 @@ export default function AdminDashboardClient() {
       if (res.ok) {
         const data = await res.json();
         setStats(data);
+      } else {
+        showToast("Failed to fetch dashboard stats", "error");
       }
     } catch (err) {
       console.error("Error fetching stats:", err);
+      showToast("Error connecting to server for stats", "error");
     } finally {
       setLoadingStats(false);
     }
@@ -81,9 +116,12 @@ export default function AdminDashboardClient() {
       if (res.ok) {
         const data = await res.json();
         setUsers(data);
+      } else {
+        showToast("Failed to load users. Please try again.", "error");
       }
     } catch (err) {
       console.error("Error fetching users:", err);
+      showToast("Connection error fetching users", "error");
     } finally {
       setLoadingUsers(false);
     }
@@ -97,9 +135,12 @@ export default function AdminDashboardClient() {
       if (res.ok) {
         const data = await res.json();
         setProperties(data.properties);
+      } else {
+        showToast("Failed to fetch listings catalog", "error");
       }
     } catch (err) {
       console.error("Error fetching properties:", err);
+      showToast("Connection error fetching properties", "error");
     } finally {
       setLoadingProperties(false);
     }
@@ -145,37 +186,53 @@ export default function AdminDashboardClient() {
           );
           setStats({ ...stats, recentProperties: updatedRecents });
         }
+        showToast(`Listing ${!currentApproval ? 'approved' : 'rejected'} successfully`, "success");
+      } else {
+        showToast("Failed to update status", "error");
       }
     } catch (err) {
       console.error(err);
+      showToast("Error updating property status", "error");
     } finally {
       setActioningId(null);
     }
   };
 
   // Delete Property listing
-  const handleDeleteProperty = async (propertyId: string) => {
-    if (!confirm("Are you sure you want to permanently delete this listing?")) return;
-    setActioningId(propertyId);
-    try {
-      const res = await fetch(`/api/admin/properties/${propertyId}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        setProperties(properties.filter((p) => p.id !== propertyId));
-        if (stats) {
-          setStats({
-            ...stats,
-            totalProperties: stats.totalProperties - 1,
-            recentProperties: stats.recentProperties.filter((p) => p.id !== propertyId),
+  const handleDeleteProperty = (propertyId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Listing",
+      message: "Are you sure you want to permanently delete this listing? This action is irreversible.",
+      danger: true,
+      onConfirm: async () => {
+        setActioningId(propertyId);
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        try {
+          const res = await fetch(`/api/admin/properties/${propertyId}`, {
+            method: "DELETE",
           });
+          if (res.ok) {
+            setProperties(properties.filter((p) => p.id !== propertyId));
+            if (stats) {
+              setStats({
+                ...stats,
+                totalProperties: stats.totalProperties - 1,
+                recentProperties: stats.recentProperties.filter((p) => p.id !== propertyId),
+              });
+            }
+            showToast("Property listing deleted successfully", "success");
+          } else {
+            showToast("Failed to delete property", "error");
+          }
+        } catch (err) {
+          console.error(err);
+          showToast("Error deleting property", "error");
+        } finally {
+          setActioningId(null);
         }
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setActioningId(null);
-    }
+    });
   };
 
   // Update User Role
@@ -190,79 +247,171 @@ export default function AdminDashboardClient() {
       const data = await res.json();
       if (res.ok) {
         setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+        showToast(`User role updated to ${newRole}`, "success");
       } else {
-        alert(data.error || "Failed to update role");
+        showToast(data.error || "Failed to update role", "error");
       }
     } catch (err) {
       console.error(err);
+      showToast("Error updating user role", "error");
     } finally {
       setActioningId(null);
     }
   };
 
   // Delete User
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm("Are you sure you want to permanently delete this user account? This deletes all their listings too.")) return;
-    setActioningId(userId);
-    try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setUsers(users.filter((u) => u.id !== userId));
-        if (stats) {
-          setStats({ ...stats, totalUsers: stats.totalUsers - 1 });
+  const handleDeleteUser = (userId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete User Account",
+      message: "Are you sure you want to permanently delete this user account? This will delete all their property listings, reviews, and bookings.",
+      danger: true,
+      onConfirm: async () => {
+        setActioningId(userId);
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        try {
+          const res = await fetch(`/api/admin/users/${userId}`, {
+            method: "DELETE",
+          });
+          const data = await res.json();
+          if (res.ok) {
+            setUsers(users.filter((u) => u.id !== userId));
+            if (stats) {
+              setStats({ ...stats, totalUsers: stats.totalUsers - 1 });
+            }
+            showToast("User account deleted successfully", "success");
+          } else {
+            showToast(data.error || "Failed to delete user", "error");
+          }
+        } catch (err) {
+          console.error(err);
+          showToast("Error deleting user account", "error");
+        } finally {
+          setActioningId(null);
         }
-      } else {
-        alert(data.error || "Failed to delete user");
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setActioningId(null);
-    }
+    });
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       
+      {/* Toast Alerts Portal */}
+      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+              className={`p-4 rounded-xl shadow-xl flex items-center justify-between border ${
+                toast.type === "success" 
+                  ? "bg-green-500/10 border-green-500/20 text-green-400" 
+                  : toast.type === "error"
+                  ? "bg-red-500/10 border-red-500/20 text-red-400"
+                  : "bg-blue-500/10 border-blue-500/20 text-blue-400"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {toast.type === "success" && <CheckCircle className="h-5 w-5" />}
+                {toast.type === "error" && <AlertTriangle className="h-5 w-5" />}
+                <p className="text-sm font-semibold">{toast.message}</p>
+              </div>
+              <button 
+                onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+                className="text-muted-foreground hover:text-foreground ml-4"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {confirmModal.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="bg-card border border-border p-6 rounded-2xl max-w-md w-full relative z-10 shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`p-2.5 rounded-xl ${confirmModal.danger ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'}`}>
+                  <AlertIcon className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground">{confirmModal.title}</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                {confirmModal.message}
+              </p>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+                  className="px-4 py-2 border border-border rounded-xl text-sm font-semibold text-foreground hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmModal.onConfirm}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all shadow-md ${
+                    confirmModal.danger ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary/90'
+                  }`}
+                >
+                  Confirm
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-6 mb-8 text-left">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-border pb-8 mb-8 text-left">
         <div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-500 border border-red-500/20 mb-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 mb-3">
             <ShieldAlert className="h-3.5 w-3.5" />
-            Admin Operations Panel
+            Core Platform Administration
           </span>
-          <h1 className="text-3xl font-black tracking-tight text-foreground">
+          <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
             Control Center
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage system-wide properties, user authorizations, and platform statistics
+          <p className="text-sm text-muted-foreground mt-1.5">
+            Overview statistics, catalog moderation, user roles, and full administrative overrides.
           </p>
         </div>
         
         <button 
-          onClick={() => { fetchStats(); fetchUsers(); fetchProperties(); }}
-          className="flex items-center gap-1.5 px-4 py-2 bg-accent text-foreground font-semibold hover:bg-accent/80 rounded-xl text-xs transition-colors self-start sm:self-center"
+          onClick={() => { fetchStats(); fetchUsers(); fetchProperties(); showToast("Dashboard data reloaded"); }}
+          className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent/80 text-foreground font-semibold border border-border rounded-xl text-xs transition-all self-start sm:self-center hover-lift shadow-sm"
         >
-          <RefreshCw className="h-3.5 w-3.5" /> Reload Data
+          <RefreshCw className="h-3.5 w-3.5" /> Reload Catalog
         </button>
       </div>
 
-      {/* Tabs */}
+      {/* Modern Tabs Menu */}
       <div className="flex border-b border-border gap-2 mb-8 overflow-x-auto pb-px">
         {[
-          { id: "overview", label: "Overview", icon: Layers },
-          { id: "properties", label: "Properties", icon: Building2 },
-          { id: "users", label: "Users", icon: Users },
+          { id: "overview", label: "Dashboard Overview", icon: Layers },
+          { id: "properties", label: "Properties Moderation", icon: Building2 },
+          { id: "users", label: "Access & User Directory", icon: Users },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as "overview" | "properties" | "users")}
-              className={`flex items-center gap-2 px-5 py-3 border-b-2 font-bold text-sm whitespace-nowrap transition-all duration-200 ${
+              className={`flex items-center gap-2 px-5 py-3.5 border-b-2 font-bold text-sm whitespace-nowrap transition-all duration-300 ${
                 activeTab === tab.id
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -280,87 +429,114 @@ export default function AdminDashboardClient() {
         
         {/* ──────── TAB: OVERVIEW ──────── */}
         {activeTab === "overview" && (
-          <div className="flex flex-col gap-8 animate-in fade-in duration-300">
+          <div className="flex flex-col gap-8">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
               {/* Total Users */}
-              <div className="bg-card border border-border p-6 rounded-2xl flex items-center justify-between shadow-sm">
-                <div className="text-left">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Users</p>
-                  <h3 className="text-3xl font-black text-foreground mt-1">
-                    {loadingStats ? "..." : stats?.totalUsers ?? 0}
+              <div className="bg-card border border-border p-6 rounded-2xl flex items-center justify-between shadow-md relative overflow-hidden group hover:border-primary/30 transition-all duration-300">
+                <div className="text-left relative z-10">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5 text-primary" /> Active Users
+                  </p>
+                  <h3 className="text-4xl font-extrabold text-foreground mt-2">
+                    {loadingStats ? (
+                      <span className="inline-block w-16 h-8 bg-accent animate-pulse rounded-lg" />
+                    ) : (
+                      stats?.totalUsers ?? 0
+                    )}
                   </h3>
                 </div>
-                <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-                  <Users className="h-6 w-6" />
+                <div className="p-4 bg-primary/10 rounded-2xl text-primary relative z-10 transition-transform duration-300 group-hover:scale-110">
+                  <Users className="h-7 w-7" />
                 </div>
+                <div className="absolute right-0 bottom-0 w-32 h-32 bg-primary/5 rounded-full translate-x-12 translate-y-12 blur-2xl" />
               </div>
 
               {/* Total Properties */}
-              <div className="bg-card border border-border p-6 rounded-2xl flex items-center justify-between shadow-sm">
-                <div className="text-left">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Properties</p>
-                  <h3 className="text-3xl font-black text-foreground mt-1">
-                    {loadingStats ? "..." : stats?.totalProperties ?? 0}
+              <div className="bg-card border border-border p-6 rounded-2xl flex items-center justify-between shadow-md relative overflow-hidden group hover:border-primary/30 transition-all duration-300">
+                <div className="text-left relative z-10">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                    <Activity className="h-3.5 w-3.5 text-primary" /> Properties Listed
+                  </p>
+                  <h3 className="text-4xl font-extrabold text-foreground mt-2">
+                    {loadingStats ? (
+                      <span className="inline-block w-16 h-8 bg-accent animate-pulse rounded-lg" />
+                    ) : (
+                      stats?.totalProperties ?? 0
+                    )}
                   </h3>
                 </div>
-                <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-                  <Building2 className="h-6 w-6" />
+                <div className="p-4 bg-primary/10 rounded-2xl text-primary relative z-10 transition-transform duration-300 group-hover:scale-110">
+                  <Building2 className="h-7 w-7" />
                 </div>
+                <div className="absolute right-0 bottom-0 w-32 h-32 bg-primary/5 rounded-full translate-x-12 translate-y-12 blur-2xl" />
               </div>
 
-              {/* System Health */}
-              <div className="bg-card border border-border p-6 rounded-2xl flex items-center justify-between shadow-sm">
-                <div className="text-left">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">System Role</p>
-                  <h3 className="text-xl font-bold text-primary mt-2 flex items-center gap-1.5">
-                    <ShieldCheck className="h-5 w-5" /> Super Admin
+              {/* System Credentials Card */}
+              <div className="bg-card border border-border p-6 rounded-2xl flex items-center justify-between shadow-md relative overflow-hidden group hover:border-primary/30 transition-all duration-300">
+                <div className="text-left relative z-10">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Administrative Role</p>
+                  <h3 className="text-xl font-extrabold text-primary mt-3 flex items-center gap-2">
+                    <ShieldCheck className="h-5.5 w-5.5" /> Super Administrator
                   </h3>
                 </div>
-                <div className="p-3 bg-green-500/10 rounded-2xl text-green-500">
-                  <Sparkles className="h-6 w-6" />
+                <div className="p-4 bg-green-500/10 rounded-2xl text-green-500 relative z-10 transition-transform duration-300 group-hover:scale-110">
+                  <Sparkles className="h-7 w-7" />
                 </div>
+                <div className="absolute right-0 bottom-0 w-32 h-32 bg-green-500/5 rounded-full translate-x-12 translate-y-12 blur-2xl" />
               </div>
             </div>
 
             {/* Recent Uploads Table */}
-            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-              <div className="px-6 py-5 border-b border-border/60 text-left">
-                <h4 className="font-bold text-base text-foreground">Recent Listings</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">Moderation list of properties recently uploaded</p>
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-md">
+              <div className="px-6 py-5 border-b border-border text-left flex items-center justify-between">
+                <div>
+                  <h4 className="font-extrabold text-lg text-foreground">Recent Submissions</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">Quick moderate panel for properties uploaded recently</p>
+                </div>
+                <span className="px-3 py-1 bg-accent border border-border rounded-lg text-xs font-semibold text-muted-foreground">
+                  Newest Listings
+                </span>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-accent/40 text-xs uppercase font-bold tracking-wider text-muted-foreground border-b border-border">
+                  <thead className="bg-accent/30 text-xs uppercase font-bold tracking-wider text-muted-foreground border-b border-border">
                     <tr>
-                      <th className="px-6 py-4">Property</th>
-                      <th className="px-6 py-4">Area</th>
-                      <th className="px-6 py-4">Price</th>
+                      <th className="px-6 py-4">Property info</th>
+                      <th className="px-6 py-4">Location</th>
+                      <th className="px-6 py-4">Price tag</th>
                       <th className="px-6 py-4">Moderation</th>
-                      <th className="px-6 py-4 text-right">Action</th>
+                      <th className="px-6 py-4 text-right">Overrides</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {loadingStats ? (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground animate-pulse">
-                          Loading recent listings...
-                        </td>
-                      </tr>
+                      [...Array(3)].map((_, i) => (
+                        <tr key={i} className="animate-pulse">
+                          <td className="px-6 py-4"><div className="h-8 bg-accent rounded w-3/4" /></td>
+                          <td className="px-6 py-4"><div className="h-4 bg-accent rounded w-1/2" /></td>
+                          <td className="px-6 py-4"><div className="h-5 bg-accent rounded w-1/3" /></td>
+                          <td className="px-6 py-4"><div className="h-6 bg-accent rounded w-1/4" /></td>
+                          <td className="px-6 py-4"><div className="h-8 bg-accent rounded w-12 ml-auto" /></td>
+                        </tr>
+                      ))
                     ) : stats?.recentProperties.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
+                        <td colSpan={5} className="px-6 py-10 text-center text-muted-foreground">
                           No recent uploads found.
                         </td>
                       </tr>
                     ) : (
                       stats?.recentProperties.map((p) => (
-                        <tr key={p.id} className="hover:bg-accent/10 transition-colors">
+                        <tr key={p.id} className="hover:bg-accent/20 transition-colors">
                           <td className="px-6 py-4 font-bold text-foreground">
-                            <div className="flex flex-col">
-                              <span>{p.title}</span>
-                              <span className="text-[10px] text-muted-foreground font-normal">Owner: {p.owner.name} ({p.owner.email})</span>
+                            <div className="flex flex-col text-left">
+                              <span className="hover:text-primary transition-colors cursor-pointer">{p.title}</span>
+                              <span className="text-[10px] text-muted-foreground font-normal mt-0.5">
+                                Agent: {p.owner.name || "Unknown"} ({p.owner.email})
+                              </span>
                             </div>
                           </td>
                           <td className="px-6 py-4 text-muted-foreground">{p.area}, {p.city}</td>
@@ -378,10 +554,10 @@ export default function AdminDashboardClient() {
                               <button
                                 onClick={() => handleToggleApproval(p.id, p.isApproved)}
                                 disabled={actioningId === p.id}
-                                className={`p-1.5 rounded-xl border text-xs font-semibold transition-colors ${
+                                className={`px-3 py-1 rounded-lg border text-xs font-bold transition-all shadow-sm ${
                                   p.isApproved
-                                    ? "border-red-500/30 text-red-500 hover:bg-red-500/10"
-                                    : "border-green-500/30 text-green-500 hover:bg-green-500/10"
+                                    ? "border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white"
+                                    : "border-green-500/30 text-green-500 hover:bg-green-500 hover:text-white"
                                 }`}
                               >
                                 {p.isApproved ? "Reject" : "Approve"}
@@ -389,7 +565,7 @@ export default function AdminDashboardClient() {
                               <button
                                 onClick={() => handleDeleteProperty(p.id)}
                                 disabled={actioningId === p.id}
-                                className="p-1.5 rounded-xl border border-border hover:border-red-500 hover:text-red-500 text-muted-foreground transition-all duration-200"
+                                className="p-2 rounded-lg border border-border hover:border-red-500 hover:text-red-500 text-muted-foreground transition-all duration-200"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -407,9 +583,9 @@ export default function AdminDashboardClient() {
 
         {/* ──────── TAB: PROPERTIES ──────── */}
         {activeTab === "properties" && (
-          <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+          <div className="flex flex-col gap-6">
             {/* Search filter bar */}
-            <form onSubmit={handlePropertySearch} className="flex gap-2">
+            <form onSubmit={handlePropertySearch} className="flex gap-2 max-w-3xl w-full">
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <input
@@ -417,43 +593,48 @@ export default function AdminDashboardClient() {
                   placeholder="Search listings by title, description or area..."
                   value={propertyQuery}
                   onChange={(e) => setPropertyQuery(e.target.value)}
-                  className="w-full h-11 pl-10 pr-4 rounded-xl border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
+                  className="w-full h-11 pl-10 pr-4 rounded-xl border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                 />
               </div>
-              <button type="submit" className="h-11 px-5 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-xl text-xs transition-all shadow-md">
+              <button type="submit" className="h-11 px-6 bg-primary text-primary-foreground font-bold hover:bg-primary/95 rounded-xl text-xs transition-all shadow-md">
                 Search
               </button>
             </form>
 
-            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-md">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-accent/40 text-xs uppercase font-bold tracking-wider text-muted-foreground border-b border-border">
+                  <thead className="bg-accent/30 text-xs uppercase font-bold tracking-wider text-muted-foreground border-b border-border">
                     <tr>
                       <th className="px-6 py-4">Title</th>
                       <th className="px-6 py-4">Area</th>
                       <th className="px-6 py-4">Price</th>
+                      <th className="px-6 py-4">Type</th>
                       <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4">Approval</th>
                       <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {loadingProperties ? (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground animate-pulse">
-                          Loading property directory...
-                        </td>
-                      </tr>
+                      [...Array(4)].map((_, i) => (
+                        <tr key={i} className="animate-pulse">
+                          <td className="px-6 py-4"><div className="h-4 bg-accent rounded w-3/4" /></td>
+                          <td className="px-6 py-4"><div className="h-4 bg-accent rounded w-1/2" /></td>
+                          <td className="px-6 py-4"><div className="h-4 bg-accent rounded w-1/3" /></td>
+                          <td className="px-6 py-4"><div className="h-4 bg-accent rounded w-1/4" /></td>
+                          <td className="px-6 py-4"><div className="h-4 bg-accent rounded w-1/5" /></td>
+                          <td className="px-6 py-4"><div className="h-8 bg-accent rounded w-20 ml-auto" /></td>
+                        </tr>
+                      ))
                     ) : properties.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                        <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
                           No listings found matching your search.
                         </td>
                       </tr>
                     ) : (
                       properties.map((p) => (
-                        <tr key={p.id} className="hover:bg-accent/10 transition-colors">
+                        <tr key={p.id} className="hover:bg-accent/20 transition-colors">
                           <td className="px-6 py-4 font-bold text-foreground max-w-xs truncate">{p.title}</td>
                           <td className="px-6 py-4 text-muted-foreground">{p.area}, {p.city}</td>
                           <td className="px-6 py-4 font-bold text-primary">{formatPKR(p.price)}</td>
@@ -475,10 +656,10 @@ export default function AdminDashboardClient() {
                               <button
                                 onClick={() => handleToggleApproval(p.id, p.isApproved)}
                                 disabled={actioningId === p.id}
-                                className={`p-1.5 rounded-xl border text-xs font-semibold transition-colors ${
+                                className={`px-3 py-1 rounded-lg border text-xs font-bold transition-all shadow-sm ${
                                   p.isApproved
-                                    ? "border-red-500/30 text-red-500 hover:bg-red-500/10"
-                                    : "border-green-500/30 text-green-500 hover:bg-green-500/10"
+                                    ? "border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white"
+                                    : "border-green-500/30 text-green-500 hover:bg-green-500 hover:text-white"
                                 }`}
                               >
                                 {p.isApproved ? "Reject" : "Approve"}
@@ -487,14 +668,14 @@ export default function AdminDashboardClient() {
                                 href={`/properties/${p.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-2 rounded-xl border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-all"
+                                className="p-2 rounded-lg border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-all"
                               >
                                 <Eye className="h-4 w-4" />
                               </a>
                               <button
                                 onClick={() => handleDeleteProperty(p.id)}
                                 disabled={actioningId === p.id}
-                                className="p-2 rounded-xl border border-border hover:border-red-500 hover:text-red-500 text-muted-foreground transition-all"
+                                className="p-2 rounded-lg border border-border hover:border-red-500 hover:text-red-500 text-muted-foreground transition-all"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -512,9 +693,9 @@ export default function AdminDashboardClient() {
 
         {/* ──────── TAB: USERS ──────── */}
         {activeTab === "users" && (
-          <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+          <div className="flex flex-col gap-6">
             {/* Search filter bar */}
-            <form onSubmit={handleUserSearch} className="flex gap-2">
+            <form onSubmit={handleUserSearch} className="flex gap-2 max-w-3xl w-full">
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <input
@@ -522,93 +703,106 @@ export default function AdminDashboardClient() {
                   placeholder="Search users by name, email or phone number..."
                   value={userQuery}
                   onChange={(e) => setUserQuery(e.target.value)}
-                  className="w-full h-11 pl-10 pr-4 rounded-xl border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
+                  className="w-full h-11 pl-10 pr-4 rounded-xl border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                 />
               </div>
-              <button type="submit" className="h-11 px-5 bg-primary text-primary-foreground font-bold hover:bg-primary/90 rounded-xl text-xs transition-all shadow-md">
+              <button type="submit" className="h-11 px-6 bg-primary text-primary-foreground font-bold hover:bg-primary/95 rounded-xl text-xs transition-all shadow-md">
                 Search
               </button>
             </form>
 
-            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-accent/40 text-xs uppercase font-bold tracking-wider text-muted-foreground border-b border-border">
-                    <tr>
-                      <th className="px-6 py-4">User</th>
-                      <th className="px-6 py-4">Contact</th>
-                      <th className="px-6 py-4">Role System</th>
-                      <th className="px-6 py-4">Listings</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {loadingUsers ? (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground animate-pulse">
-                          Loading users index...
-                        </td>
-                      </tr>
-                    ) : users.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
-                          No users found matching your query.
-                        </td>
-                      </tr>
-                    ) : (
-                      users.map((u) => (
-                        <tr key={u.id} className="hover:bg-accent/10 transition-colors">
-                          <td className="px-6 py-4 font-bold text-foreground">
-                            <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center font-bold text-xs overflow-hidden flex-shrink-0">
-                                {u.profileImage || u.image ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={u.profileImage || u.image || ""} alt={u.name || "User"} className="h-full w-full object-cover" />
-                                ) : (
-                                  u.name?.[0]?.toUpperCase() || "U"
-                                )}
-                              </div>
-                              <div className="flex flex-col text-left">
-                                <span>{u.name || "Anonymous"}</span>
-                                <span className="text-[10px] text-muted-foreground font-normal">ID: {u.id}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex flex-col text-left text-xs">
-                              <span className="text-foreground font-semibold">{u.email}</span>
-                              <span className="text-muted-foreground">{u.phone || "No phone added"}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <select
-                              value={u.role}
-                              onChange={(e) => handleUpdateRole(u.id, e.target.value as "USER" | "AGENT" | "ADMIN")}
-                              className="text-xs font-semibold px-2 py-1.5 rounded-lg border border-border bg-background text-foreground focus:outline-none"
-                            >
-                              <option value="USER">USER</option>
-                              <option value="AGENT">AGENT</option>
-                              <option value="ADMIN">ADMIN</option>
-                            </select>
-                          </td>
-                          <td className="px-6 py-4 text-muted-foreground font-bold">
-                            {u._count.properties} Listing{u._count.properties !== 1 ? "s" : ""}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <button
-                              onClick={() => handleDeleteUser(u.id)}
-                              disabled={actioningId === u.id}
-                              className="p-2 rounded-xl border border-border hover:border-red-500 hover:text-red-500 text-muted-foreground transition-all"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            {/* Grid display for user cards rather than complex table for better visual styling */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {loadingUsers ? (
+                [...Array(3)].map((_, i) => (
+                  <div key={i} className="bg-card border border-border p-6 rounded-2xl shadow-md animate-pulse flex flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-full bg-accent" />
+                      <div className="flex-1 flex flex-col gap-2">
+                        <div className="h-4 bg-accent rounded w-2/3" />
+                        <div className="h-3 bg-accent rounded w-1/2" />
+                      </div>
+                    </div>
+                    <div className="h-4 bg-accent rounded w-3/4" />
+                    <div className="h-10 bg-accent rounded w-full mt-2" />
+                  </div>
+                ))
+              ) : users.length === 0 ? (
+                <div className="col-span-full bg-card border border-border p-10 rounded-2xl text-center text-muted-foreground">
+                  No users found matching your query.
+                </div>
+              ) : (
+                users.map((u) => (
+                  <div key={u.id} className="bg-card border border-border p-6 rounded-2xl shadow-md flex flex-col justify-between hover:border-primary/20 transition-all duration-300">
+                    <div>
+                      {/* Card Header */}
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 rounded-full bg-accent flex items-center justify-center font-extrabold text-sm overflow-hidden flex-shrink-0 border-2 border-border shadow-inner">
+                            {u.profileImage || u.image ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={u.profileImage || u.image || ""} alt={u.name || "User"} className="h-full w-full object-cover" />
+                            ) : (
+                              u.name?.[0]?.toUpperCase() || "U"
+                            )}
+                          </div>
+                          <div className="flex flex-col text-left">
+                            <h5 className="font-extrabold text-foreground leading-snug">{u.name || "Anonymous User"}</h5>
+                            <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[120px]">{u.id}</span>
+                          </div>
+                        </div>
+
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${
+                          u.role === 'ADMIN' 
+                            ? 'bg-red-500/10 border-red-500/20 text-red-500' 
+                            : u.role === 'AGENT'
+                            ? 'bg-primary/10 border-primary/20 text-primary'
+                            : 'bg-accent border-border text-muted-foreground'
+                        }`}>
+                          {u.role}
+                        </span>
+                      </div>
+
+                      {/* Contact details */}
+                      <div className="flex flex-col text-left gap-1 border-t border-border pt-4 mt-2 mb-6">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground font-semibold">Email:</span>
+                          <span className="text-foreground font-medium truncate max-w-[180px]">{u.email}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground font-semibold">Phone:</span>
+                          <span className="text-foreground font-medium">{u.phone || "None added"}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground font-semibold">Properties:</span>
+                          <span className="text-primary font-extrabold">{u._count.properties} Listing(s)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions and role switcher */}
+                    <div className="flex gap-2">
+                      <select
+                        value={u.role}
+                        onChange={(e) => handleUpdateRole(u.id, e.target.value as "USER" | "AGENT" | "ADMIN")}
+                        className="text-xs font-semibold px-3 py-2 rounded-xl border border-border bg-background text-foreground focus:outline-none flex-grow"
+                      >
+                        <option value="USER">USER ROLE</option>
+                        <option value="AGENT">AGENT ROLE</option>
+                        <option value="ADMIN">ADMIN ROLE</option>
+                      </select>
+                      <button
+                        onClick={() => handleDeleteUser(u.id)}
+                        disabled={actioningId === u.id}
+                        className="p-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl border border-red-500/20 transition-all shadow-sm"
+                        title="Delete User permanently"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}

@@ -7,8 +7,9 @@ import {
   User, Building2, Heart, History, Settings, Plus, Edit2, 
   Trash2, Mail, Phone, Camera, Save, Loader2, Sparkles, Image as ImageIcon, Video, Link as LinkIcon
 } from "lucide-react";
-import { formatPKR } from "@/components/property/PropertyCard";
+import { formatPKR } from "@/lib/utils";
 import DashboardActions from "./DashboardActions";
+import { uploadDirectToCloudinary } from "@/lib/cloudinary-client";
 
 interface UserProfile {
   id: string;
@@ -151,27 +152,17 @@ export default function UserDashboardClient() {
     if (!file) return;
 
     setUploadingMedia(true);
-    const formData = new FormData();
-    formData.append("file", file);
 
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setUploadedUrls((prev) => [data.url, ...prev]);
-        // If uploading profile image, sync it directly to the form
-        if (activeTab === "profile") {
-          setProfileForm((prev) => ({ ...prev, profileImage: data.url }));
-        }
-      } else {
-        alert(data.error || "Upload failed");
+      const url = await uploadDirectToCloudinary(file);
+      setUploadedUrls((prev) => [url, ...prev]);
+      // If uploading profile image, sync it directly to the form
+      if (activeTab === "profile") {
+        setProfileForm((prev) => ({ ...prev, profileImage: url }));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Error uploading file.");
+      alert(err.message || "Error uploading file.");
     } finally {
       setUploadingMedia(false);
     }
@@ -592,7 +583,7 @@ export default function UserDashboardClient() {
             <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 text-left animate-in fade-in duration-300">
               <div className="border-b border-border pb-4 mb-6">
                 <h3 className="font-bold text-lg text-foreground">Media Upload Center</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Upload photos or video clips directly to Cloudinary and copy URLs</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Upload photos or video clips directly and copy URLs</p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -628,7 +619,7 @@ export default function UserDashboardClient() {
                   {uploadingMedia ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                      <span>Uploading to Cloudinary...</span>
+                      <span>Uploading...</span>
                     </>
                   ) : (
                     <>

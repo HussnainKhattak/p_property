@@ -25,9 +25,14 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json(savedList.map((item) => item.property));
+    const properties = savedList
+      .map((item) => item.property)
+      .filter((prop) => prop !== null);
+
+    return NextResponse.json(properties);
   } catch (err: unknown) {
     const error = err as Error;
+    console.error("Saved properties retrieval error:", error);
     return NextResponse.json({ error: "Failed to fetch saved listings: " + error.message }, { status: 500 });
   }
 }

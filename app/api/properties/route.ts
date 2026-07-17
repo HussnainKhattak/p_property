@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { propertySchema } from "@/lib/validations/property";
 import { Prisma, PropertyType, ListingType } from "@prisma/client";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 // POST /api/properties — Create a new property listing
 export async function POST(req: Request) {
@@ -40,6 +41,14 @@ export async function POST(req: Request) {
         ownerId:      session.user.id,
       },
     });
+
+    // Immediately invalidate all homepage and listing caches
+    // so new property appears without requiring a manual refresh
+    revalidatePath("/");
+    revalidatePath("/properties");
+    revalidateTag("properties");
+    revalidateTag("featured-properties");
+    revalidateTag("latest-properties");
 
     return NextResponse.json(property, { status: 201 });
   } catch (err: unknown) {

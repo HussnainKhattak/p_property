@@ -51,11 +51,10 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
-        scrolled
-          ? "bg-background/80 backdrop-blur-md border-b border-border shadow-md"
-          : "bg-transparent border-b border-transparent"
-      }`}
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ${scrolled
+        ? "bg-background/80 backdrop-blur-md border-b border-border shadow-md"
+        : "bg-transparent border-b border-transparent"
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
@@ -67,7 +66,7 @@ export default function Navbar() {
               </div>
               <span className="font-bold text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text text-transparent">
                 Peshawar <span className="text-primary font-extrabold">Property</span> Hub
-              </span>
+              </span> <span className="ml-2 text-xs sm:text-sm font-normal text-emerald-400 opacity-75">Husnain Khattak</span>
             </Link>
           </motion.div>
 
@@ -80,11 +79,10 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`text-sm font-medium transition-colors relative py-2 ${
-                    isActive
-                      ? "text-primary font-semibold"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={`text-sm font-medium transition-colors relative py-2 ${isActive
+                    ? "text-primary font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                    }`}
                 >
                   {link.name}
                   {isActive && (
@@ -273,11 +271,10 @@ export default function Navbar() {
                   >
                     <Link
                       href={link.href}
-                      className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-colors ${
-                        isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                      }`}
+                      className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-colors ${isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                        }`}
                     >
                       <Icon className="h-5 w-5" />
                       {link.name}

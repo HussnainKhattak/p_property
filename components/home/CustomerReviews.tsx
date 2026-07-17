@@ -19,7 +19,7 @@ export default function CustomerReviews() {
     {
       name: "Jawad Shah",
       role: "Seller (Regi Model Town)",
-      comment: "Listing my commercial file was seamless. The Cloudinary-backed uploader let me upload high-definition plot maps easily. Received multiple vetted inquiries within just four days.",
+      comment: "Listing my commercial property was seamless. The media uploader let me add high-definition photographs and floor plans easily. Received multiple inquiries within just four days.",
       rating: 5,
       avatarText: "JS"
     }

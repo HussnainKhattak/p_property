@@ -18,8 +18,8 @@ export const propertySchema = z.object({
   bedrooms: z.coerce.number().int().nonnegative().default(0),
   bathrooms: z.coerce.number().int().nonnegative().default(0),
   status: PropertyStatusEnum.default("AVAILABLE"),
-  imageUrls: z.array(z.string().url("Invalid image URL")).default([]),
-  videoUrl: z.string().url("Invalid video URL").optional().nullable(),
+  imageUrls: z.array(z.string().url("Invalid image URL")).min(1, "At least one image is required"),
+  videoUrl: z.union([z.string().url("Invalid video URL"), z.literal(""), z.null()]).optional(),
 });
 
 export const bookingSchema = z.object({

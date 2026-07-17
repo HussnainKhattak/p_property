@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Bed, Bath, Maximize, MapPin, Building } from "lucide-react";
+import { Bed, Bath, Maximize, MapPin, Building, Eye } from "lucide-react";
 import SavePropertyButton from "./SavePropertyButton";
 import LazyImage from "@/components/ui/LazyImage";
 
@@ -22,6 +22,8 @@ export interface Property {
   status: "AVAILABLE" | "SOLD" | "RENTED";
   imageUrls: string[];
   videoUrl: string | null;
+  views?: number;
+  createdAt?: Date | string;
   owner?: {
     name: string | null;
     profileImage: string | null;
@@ -34,16 +36,7 @@ interface PropertyCardProps {
   index?: number;
 }
 
-// Helper: format currency in Lakhs/Crores PKR
-export function formatPKR(price: number) {
-  if (price >= 10000000) {
-    return `${(price / 10000000).toFixed(2).replace(/\.00$/, "")} Crore`;
-  }
-  if (price >= 100000) {
-    return `${(price / 100000).toFixed(2).replace(/\.00$/, "")} Lakh`;
-  }
-  return `${price.toLocaleString()} PKR`;
-}
+import { formatPKR } from "@/lib/utils";
 
 const formatArea = (marlas: number) => {
   if (marlas === 20) return "1 Kanal";
@@ -64,7 +57,7 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
       transition={{
         duration: 0.5,
         delay: (index % 6) * 0.08,
-        ease: [0.22, 1, 0.36, 1],
+        ease: [0.22, 1, 0.36, 1] as const,
       }}
       className="group flex flex-col rounded-2xl border border-border bg-card overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300"
       whileHover={{ y: -4, transition: { duration: 0.22 } }}
@@ -158,6 +151,14 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
             <span>{formatArea(property.marla)}</span>
           </div>
         </div>
+
+        {/* View count */}
+        {typeof property.views === "number" && property.views > 0 && (
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
+            <Eye className="h-3 w-3" />
+            <span>{property.views.toLocaleString()} views</span>
+          </div>
+        )}
 
         {/* Footer: owner + CTA */}
         <div className="flex items-center justify-between gap-4 mt-1">

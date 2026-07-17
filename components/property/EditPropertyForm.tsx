@@ -15,6 +15,8 @@ import {
   Save 
 } from "lucide-react";
 
+import { uploadDirectToCloudinary } from "@/lib/cloudinary-client";
+
 interface EditPropertyFormProps {
   property: {
     id: string;
@@ -38,21 +40,21 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
   const router = useRouter();
   
   const [form, setForm] = useState({
-    title: property.title,
-    description: property.description,
-    price: property.price.toString(),
-    marla: property.marla.toString(),
-    city: property.city,
-    area: property.area,
-    address: property.address,
+    title:        property.title,
+    description:  property.description,
+    price:        property.price.toString(),
+    marla:        property.marla.toString(),
+    city:         property.city,
+    area:         property.area,
+    address:      property.address,
     propertyType: property.propertyType,
-    listingType: property.listingType,
-    bedrooms: property.bedrooms.toString(),
-    bathrooms: property.bathrooms.toString(),
-    videoUrl: property.videoUrl || "",
+    listingType:  property.listingType,
+    bedrooms:     property.bedrooms.toString(),
+    bathrooms:    property.bathrooms.toString(),
+    videoUrl:     property.videoUrl || "",
   });
 
-  const [imageUrls, setImageUrls] = useState<string[]>(property.imageUrls || []);
+  const [imageUrls, setImageUrls] = useState<string[]>(property.imageUrls);
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -63,7 +65,6 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
     setError("");
-    setSuccess("");
   };
 
   const handleFileUpload = async (
@@ -78,25 +79,13 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
     setError("");
     setSuccess("");
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "File upload failed");
-      }
+      const url = await uploadDirectToCloudinary(file);
 
       if (field === "image") {
-        setImageUrls((prev) => [...prev, data.url]);
+        setImageUrls((prev) => [...prev, url]);
       } else {
-        setForm((p) => ({ ...p, videoUrl: data.url }));
+        setForm((p) => ({ ...p, videoUrl: url }));
       }
     } catch (err: unknown) {
       const errorObj = err as Error;
@@ -446,7 +435,7 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
                 </label>
                 
                 <div className="flex-1 flex flex-col gap-1 text-left">
-                  <p className="text-xs font-bold text-foreground">Cloudinary Uploader</p>
+                  <p className="text-xs font-bold text-foreground">Media Uploader</p>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
                     Upload new images. Click to upload multiple. Max size: 10MB per image.
                   </p>

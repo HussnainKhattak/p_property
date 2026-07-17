@@ -17,7 +17,7 @@ const features = [
   },
   {
     title: "High-Quality Media Uploads",
-    description: "Explore layouts through high-resolution property photography and direct video walkthrough uploads powered securely by Cloudinary.",
+    description: "Explore layouts through high-resolution property photography and direct video walkthrough uploads.",
     icon: ImageIcon,
   },
   {
@@ -27,11 +27,6 @@ const features = [
   },
 ];
 
-const stats = [
-  { value: "10k+", label: "Satisfied Customers" },
-  { value: "1.5k+", label: "Active Listings" },
-  { value: "150+", label: "Verified Agents" },
-];
 
 export default function WhyChooseUs() {
   return (
@@ -57,7 +52,7 @@ export default function WhyChooseUs() {
               We bridge the gap in traditional estate transactions by introducing digital validation, scheduled site visit tracking, and rich multimedia walkthroughs for properties.
             </p>
 
-            {/* Animated counters */}
+            {/* Platform feature highlights */}
             <motion.div
               className="flex gap-6 mt-2 border-t border-border pt-6"
               variants={staggerContainer}
@@ -65,24 +60,18 @@ export default function WhyChooseUs() {
               whileInView="visible"
               viewport={{ once: true }}
             >
-              {stats.map((stat, i) => (
+              {[
+                { label: "Direct Uploads", desc: "Images & Videos" },
+                { label: "Secure Auth", desc: "JWT Protected" },
+                { label: "Verified Deals", desc: "100% Legit Listings" },
+              ].map((item, i) => (
                 <motion.div
-                  key={stat.label}
+                  key={item.label}
                   variants={cardItem}
                   className={i > 0 ? "border-l border-border pl-6" : ""}
                 >
-                  <motion.p
-                    className="text-3xl font-extrabold text-primary"
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.15, duration: 0.5, type: "spring", stiffness: 150 }}
-                  >
-                    {stat.value}
-                  </motion.p>
-                  <p className="text-xs text-muted-foreground mt-1 uppercase font-bold tracking-wider">
-                    {stat.label}
-                  </p>
+                  <p className="text-base font-extrabold text-primary">{item.label}</p>
+                  <p className="text-xs text-muted-foreground mt-1 uppercase font-bold tracking-wider">{item.desc}</p>
                 </motion.div>
               ))}
             </motion.div>

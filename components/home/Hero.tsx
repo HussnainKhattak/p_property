@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Search, MapPin, Home, DollarSign, ArrowRight, TrendingUp, Shield, Star } from "lucide-react";
-import { slideLeft, slideRight, slideUp, staggerContainer, cardItem, hoverScale, tapScale } from "@/lib/animations";
+import { Search, MapPin, Home, DollarSign, ArrowRight } from "lucide-react";
+import { slideLeft, slideRight, staggerContainer, cardItem, hoverScale, tapScale } from "@/lib/animations";
 
 const locations = [
   "DHA Peshawar",
@@ -22,11 +22,7 @@ const propertyTypes = [
   { label: "Office", value: "OFFICE" },
 ];
 
-const stats = [
-  { icon: TrendingUp, label: "Active Listings", value: "2,400+" },
-  { icon: Shield, label: "Verified Properties", value: "98%" },
-  { icon: Star, label: "Happy Clients", value: "1,200+" },
-];
+
 
 export default function Hero() {
   const [listingType, setListingType] = useState<"SALE" | "RENT">("SALE");
@@ -126,29 +122,17 @@ export default function Hero() {
               </motion.div>
             </motion.div>
 
-            {/* Stats Row */}
-            <motion.div
-              variants={staggerContainer}
-              className="flex flex-wrap gap-6 mt-4"
-            >
-              {stats.map((stat) => {
-                const Icon = stat.icon;
-                return (
-                  <motion.div
-                    key={stat.label}
-                    variants={cardItem}
-                    className="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-2xl px-4 py-2.5"
-                    whileHover={{ backgroundColor: "rgba(255,255,255,0.08)", y: -2 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Icon className="h-4 w-4 text-primary flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-black text-white">{stat.value}</p>
-                      <p className="text-[10px] text-zinc-400">{stat.label}</p>
-                    </div>
-                  </motion.div>
-                );
-              })}
+            {/* Trust badges */}
+            <motion.div variants={slideLeft} className="flex flex-wrap gap-3 mt-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/5 border border-white/10 text-zinc-300">
+                🏠 Real Listings Only
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/5 border border-white/10 text-zinc-300">
+                📍 Peshawar & KP
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/5 border border-white/10 text-zinc-300">
+                ✅ Verified Uploads
+              </span>
             </motion.div>
           </motion.div>
 

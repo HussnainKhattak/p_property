@@ -74,6 +74,7 @@ model Property {
   bathrooms    Int            @default(0)
   imageUrls    String[]       // Cloudinary image URLs (array)
   videoUrl     String?        // Cloudinary video URL
+  views        Int            @default(0)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
@@ -89,6 +90,9 @@ model Property {
   @@index([price])
   @@index([propertyType])
   @@index([createdAt])
+  @@index([views])
+  @@index([isApproved])
+  @@index([status])
 }
 
 // ─── NextAuth Required Models ─────────────────────────

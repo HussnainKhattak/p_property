@@ -51,9 +51,26 @@ export async function POST(req: Request) {
       { message: "Account created successfully.", user },
       { status: 201 }
     );
-  } catch {
+  } catch (err: any) {
+    console.error("Registration server error details:", err);
+    
+    let errorMessage = "Something went wrong. Please try again.";
+    
+    // Detect database connection errors (Prisma codes P1001, P2024, etc., or direct mongo messages)
+    if (
+      err.code === "P1001" || 
+      err.code === "P1012" ||
+      err.message?.includes("Can't reach database server") ||
+      err.message?.includes("connection") ||
+      err.message?.includes("database")
+    ) {
+      errorMessage = "Service temporarily unavailable. Please try again in a moment.";
+    } else if (err.message) {
+      errorMessage = err.message;
+    }
+
     return NextResponse.json(
-      { error: "Something went wrong. Please try again." },
+      { error: errorMessage },
       { status: 500 }
     );
   }

@@ -1,74 +1,38 @@
 import Link from "next/link";
+import { unstable_noStore as noStore } from "next/cache";
 import { ArrowRight, Clock } from "lucide-react";
 import PropertyCard, { Property } from "../property/PropertyCard";
+import { db } from "@/lib/db";
 
-export default function LatestProperties() {
-  // Mock properties matching the updated schema
-  const latestListings: Property[] = [
-    {
-      id: "late-1",
-      title: "5 Marla Brand New House in Regi Model Town",
-      description: "Elegant double-story 5 Marla house in Zone C. Features 3 bedrooms, modern designer woodwork, granite tiling, and secure parking.",
-      price: 18500000,
-      address: "Zone C, Sector 2",
-      city: "Peshawar",
-      area: "Regi Model Town",
-      propertyType: "HOUSE",
-      listingType: "SALE",
-      bedrooms: 3,
-      bathrooms: 4,
-      marla: 5.0,
-      status: "AVAILABLE",
-      imageUrls: ["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80"],
-      videoUrl: null,
-      owner: {
-        name: "Zarak Khan",
-        profileImage: null
-      }
-    },
-    {
-      id: "late-2",
-      title: "1 Kanal Residential Plot in DHA Phase 1",
-      description: "Direct deal corner plot in DHA Sector B. Front facing park, fully developed block, utility lines connected. Ready for construction.",
-      price: 29000000,
-      address: "Sector B, Block 1",
-      city: "Peshawar",
-      area: "DHA Peshawar",
-      propertyType: "PLOT",
-      listingType: "SALE",
-      bedrooms: 0,
-      bathrooms: 0,
-      marla: 20.0,
-      status: "AVAILABLE",
-      imageUrls: ["https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80"],
-      videoUrl: null,
-      owner: {
-        name: "Afridi Estate",
-        profileImage: null
-      }
-    },
-    {
-      id: "late-3",
-      title: "Fully Furnished Office on University Road",
-      description: "Ideal office setup for IT company or call center. Situated in executive building, University Road. Includes workstations, manager cabins, and power backup.",
-      price: 75000,
-      address: "Dean's Trade Center",
-      city: "Peshawar",
-      area: "University Town",
-      propertyType: "OFFICE",
-      listingType: "RENT",
-      bedrooms: 0,
-      bathrooms: 2,
-      marla: 5.5,
-      status: "AVAILABLE",
-      imageUrls: ["https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80"],
-      videoUrl: null,
-      owner: {
-        name: "KP Business Spaces",
-        profileImage: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80"
-      }
-    }
-  ];
+async function getLatestProperties(): Promise<Property[]> {
+  // Opt out of Next.js data cache — always fetch live data
+  noStore();
+  try {
+    const properties = await db.property.findMany({
+      where: { isApproved: true, status: "AVAILABLE" },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      include: {
+        owner: {
+          select: { name: true, profileImage: true, image: true },
+        },
+      },
+    });
+
+    return properties.map((p) => ({
+      ...p,
+      propertyType: p.propertyType as Property["propertyType"],
+      listingType: p.listingType as Property["listingType"],
+      status: p.status as Property["status"],
+      marla: Number(p.marla),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export default async function LatestProperties() {
+  const properties = await getLatestProperties();
 
   return (
     <section className="py-20 bg-accent/20 border-t border-b border-border transition-colors duration-300">
@@ -91,17 +55,31 @@ export default function LatestProperties() {
             href="/properties?sort=newest"
             className="flex items-center gap-1.5 text-sm font-bold text-primary hover:underline group self-start md:self-end"
           >
-            Browse Newest Uploads
+            Browse All Listings
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         </div>
 
         {/* Listings Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {latestListings.map((property) => (
-            <PropertyCard key={property.id} property={property} />
-          ))}
-        </div>
+        {properties.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {properties.map((property, i) => (
+              <PropertyCard key={property.id} property={property} index={i} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-24 border border-dashed border-border rounded-2xl text-center gap-4">
+            <Clock className="h-10 w-10 text-muted-foreground/50" />
+            <p className="text-muted-foreground font-medium">No listings yet.</p>
+            <p className="text-sm text-muted-foreground/70">Newly added properties will appear here automatically.</p>
+            <Link
+              href="/properties/add"
+              className="mt-2 px-5 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
+            >
+              Add the First Property
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );

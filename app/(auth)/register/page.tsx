@@ -73,8 +73,9 @@ export default function RegisterPage() {
 
       router.push("/dashboard");
       router.refresh();
-    } catch {
-      setError("Network error. Please check your connection and try again.");
+    } catch (err: any) {
+      console.error("Registration client-side error:", err);
+      setError(err?.message || "Network error. Please check your connection and try again.");
       setIsLoading(false);
     }
   };

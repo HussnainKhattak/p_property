@@ -5,6 +5,12 @@ export default NextAuth(authConfig).auth;
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/dashboard/:path*",
+    "/profile/:path*",
+    "/properties/add",
+    "/properties/edit/:path*",
+    "/admin/:path*",
+    "/login",
+    "/register",
   ],
 };

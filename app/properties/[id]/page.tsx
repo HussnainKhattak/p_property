@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -10,7 +11,9 @@ import {
   ShieldCheck, 
   ArrowLeft,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Eye,
+  Heart
 } from "lucide-react";
 import PropertyCard, { Property } from "@/components/property/PropertyCard";
 import PropertySidebarActions from "@/components/property/PropertySidebarActions";
@@ -170,6 +173,9 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
     );
   }
 
+  const session = await auth();
+  const isOwner = !!(session?.user?.id && session.user.id === property.ownerId);
+
   const formattedPrice = formatPKR(property.price);
   const postedDate = new Date(property.createdAt).toLocaleDateString("en-PK", {
     year: "numeric",
@@ -209,6 +215,43 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
           
           {/* Left Column (8 cols on desktop) */}
           <div className="lg:col-span-8 flex flex-col gap-8">
+
+            {/* Property Performance (Only visible to Property Owner) */}
+            {isOwner && (
+              <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-primary/10 to-blue-500/10 border border-primary/30 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in duration-300">
+                <div className="flex flex-col gap-1 text-left">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/30 w-fit">
+                    <Sparkles className="h-3.5 w-3.5" /> Property Performance
+                  </span>
+                  <h3 className="text-lg font-extrabold text-foreground">Owner Live Analytics</h3>
+                  <p className="text-xs text-muted-foreground">Only visible to you as the property owner</p>
+                </div>
+
+                <div className="flex items-center gap-6 bg-card/90 backdrop-blur-sm border border-border p-3.5 rounded-xl">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+                      <Eye className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Total Views</span>
+                      <span className="text-xl font-black text-foreground">{property.views}</span>
+                    </div>
+                  </div>
+
+                  <div className="h-8 w-px bg-border" />
+
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-rose-500/10 text-rose-500">
+                      <Heart className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Total Saves</span>
+                      <span className="text-xl font-black text-foreground">{property.favoritesCount ?? 0}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Header Title Block */}
             <div className="flex flex-col gap-4 text-left">

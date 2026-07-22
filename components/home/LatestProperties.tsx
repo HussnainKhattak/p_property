@@ -1,38 +1,10 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 import { ArrowRight, Clock } from "lucide-react";
-import PropertyCard, { Property } from "../property/PropertyCard";
-import { db } from "@/lib/db";
-
-async function getLatestProperties(): Promise<Property[]> {
-  // Opt out of Next.js data cache — always fetch live data
-  noStore();
-  try {
-    const properties = await db.property.findMany({
-      where: { isApproved: true, status: "AVAILABLE" },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      include: {
-        owner: {
-          select: { name: true, profileImage: true, image: true },
-        },
-      },
-    });
-
-    return properties.map((p) => ({
-      ...p,
-      propertyType: p.propertyType as Property["propertyType"],
-      listingType: p.listingType as Property["listingType"],
-      status: p.status as Property["status"],
-      marla: Number(p.marla),
-    }));
-  } catch {
-    return [];
-  }
-}
+import PropertyCard from "../property/PropertyCard";
+import { getLatestProperties } from "@/lib/data";
 
 export default async function LatestProperties() {
-  const properties = await getLatestProperties();
+  const properties = await getLatestProperties(4);
 
   return (
     <section className="py-20 bg-accent/20 border-t border-b border-border transition-colors duration-300">
@@ -62,7 +34,7 @@ export default async function LatestProperties() {
 
         {/* Listings Grid */}
         {properties.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {properties.map((property, i) => (
               <PropertyCard key={property.id} property={property} index={i} />
             ))}

@@ -1,39 +1,7 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 import { ArrowRight, Sparkles, TrendingUp } from "lucide-react";
-import PropertyCard, { Property } from "../property/PropertyCard";
-import { db } from "@/lib/db";
-
-async function getFeaturedProperties(): Promise<Property[]> {
-  // Opt out of Next.js data cache — always fetch live data
-  noStore();
-  try {
-    const properties = await db.property.findMany({
-      where: { isApproved: true, status: "AVAILABLE" },
-      orderBy: [
-        { views: "desc" },
-        { createdAt: "desc" },
-      ],
-      take: 3,
-      include: {
-        owner: {
-          select: { name: true, profileImage: true, image: true },
-        },
-      },
-    });
-
-    return properties.map((p) => ({
-      ...p,
-      propertyType: p.propertyType as Property["propertyType"],
-      listingType: p.listingType as Property["listingType"],
-      status: p.status as Property["status"],
-      marla: Number(p.marla),
-    }));
-  } catch (err: any) {
-    console.error("Error in getFeaturedProperties:", err);
-    return [];
-  }
-}
+import PropertyCard from "../property/PropertyCard";
+import { getFeaturedProperties } from "@/lib/data";
 
 export default async function FeaturedProperties() {
   const properties = await getFeaturedProperties();

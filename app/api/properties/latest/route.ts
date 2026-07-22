@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getLatestProperties, logTiming } from "@/lib/data";
 
-// GET /api/properties/latest — Fetch newest properties sorted by createdAt descending
+// GET /api/properties/latest — Fetch newest properties with caching & timing diagnostic
 export async function GET() {
+  const start = Date.now();
   try {
-    const properties = await db.property.findMany({
-      where: { isApproved: true, status: "AVAILABLE" },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      include: {
-        owner: {
-          select: { name: true, phone: true, profileImage: true, image: true },
-        },
+    const properties = await getLatestProperties(4);
+    logTiming("API GET /api/properties/latest", start);
+
+    return NextResponse.json(properties, {
+      headers: {
+        "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300",
       },
     });
-
-    return NextResponse.json(properties);
   } catch (err: unknown) {
+    logTiming("API GET /api/properties/latest (Failed)", start);
     const error = err as Error;
     return NextResponse.json(
       { error: "Failed to fetch latest properties: " + error.message },

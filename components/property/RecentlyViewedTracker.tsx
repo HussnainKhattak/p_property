@@ -8,18 +8,26 @@ interface RecentlyViewedTrackerProps {
 
 export default function RecentlyViewedTracker({ propertyId }: RecentlyViewedTrackerProps) {
   useEffect(() => {
+    // 1. Record local recent view history
     try {
       const storageKey = "recently_viewed_properties";
       const existing: string[] = JSON.parse(localStorage.getItem(storageKey) || "[]");
       
-      // Remove duplicate if it already exists to move it to the front
       const updated = [propertyId, ...existing.filter((id) => id !== propertyId)].slice(0, 10);
-      
       localStorage.setItem(storageKey, JSON.stringify(updated));
     } catch (err) {
-      console.error("Failed to track recently viewed property:", err);
+      console.error("Failed to track recently viewed property in storage:", err);
+    }
+
+    // 2. Trigger anti-inflation backend view counter API
+    try {
+      fetch(`/api/properties/${propertyId}/view`, {
+        method: "POST",
+      }).catch((e) => console.error("Error triggering view API:", e));
+    } catch (err) {
+      console.error("View API call error:", err);
     }
   }, [propertyId]);
 
-  return null; // Side-effect only component
+  return null; // Renderless side-effect tracker
 }

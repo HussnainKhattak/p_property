@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  User, Building2, Heart, History, Settings, Plus, Edit2, 
-  Trash2, Mail, Phone, Camera, Save, Loader2, Sparkles, Image as ImageIcon, Video, Link as LinkIcon
+  User, Building2, Heart, History, Plus, Edit2, 
+  Camera, Save, Loader2, Sparkles, Image as ImageIcon, Video, Link as LinkIcon,
+  BarChart3, Eye, TrendingUp, Award, Calendar, MapPin
 } from "lucide-react";
 import { formatPKR } from "@/lib/utils";
 import DashboardActions from "./DashboardActions";
@@ -36,12 +37,14 @@ interface Property {
   status: string;
   marla: number;
   imageUrls: string[];
+  views?: number;
+  favoritesCount?: number;
   createdAt: string;
 }
 
 export default function UserDashboardClient() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"overview" | "properties" | "saved" | "recent" | "profile" | "media">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "properties" | "saved" | "recent" | "profile" | "media">("overview");
 
   // State managers
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -80,7 +83,6 @@ export default function UserDashboardClient() {
       const propertiesRes = await fetch("/api/properties");
       if (propertiesRes.ok) {
         const propertiesData = await propertiesRes.json();
-        // Since /api/properties returns all listings, filter by logged-in user id
         if (profileData.user?.id) {
           const userListings = propertiesData.filter((p: any) => p.ownerId === profileData.user.id);
           setProperties(userListings);
@@ -97,11 +99,9 @@ export default function UserDashboardClient() {
       // Fetch Recently Viewed properties from LocalStorage
       const localRecentIds = JSON.parse(localStorage.getItem("recently_viewed_properties") || "[]");
       if (localRecentIds.length > 0) {
-        // Query the search endpoint for these specific IDs
         const recentRes = await fetch(`/api/properties/search?limit=10`);
         if (recentRes.ok) {
           const recentData = await recentRes.json();
-          // Filter to match the IDs in localStorage ordered correctly
           const filtered = recentData.properties.filter((p: Property) => localRecentIds.includes(p.id));
           setRecentlyViewed(filtered);
         }
@@ -146,7 +146,7 @@ export default function UserDashboardClient() {
     }
   };
 
-  // Upload Custom Media (Images / Videos) to Cloudinary
+  // Upload Custom Media
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -156,7 +156,6 @@ export default function UserDashboardClient() {
     try {
       const url = await uploadDirectToCloudinary(file);
       setUploadedUrls((prev) => [url, ...prev]);
-      // If uploading profile image, sync it directly to the form
       if (activeTab === "profile") {
         setProfileForm((prev) => ({ ...prev, profileImage: url }));
       }
@@ -168,7 +167,6 @@ export default function UserDashboardClient() {
     }
   };
 
-  // Copy uploaded link helper
   const copyToClipboard = (url: string) => {
     navigator.clipboard.writeText(url);
     alert("URL copied to clipboard! You can paste this in your property cover image or video URL fields.");
@@ -184,6 +182,18 @@ export default function UserDashboardClient() {
   }
 
   const activeProperties = properties.filter((p) => p.status === "AVAILABLE");
+
+  // Aggregate Analytics Calculations
+  const totalPropertyViews = properties.reduce((acc, p) => acc + (p.views || 0), 0);
+  const totalPropertySaves = properties.reduce((acc, p) => acc + (p.favoritesCount || 0), 0);
+
+  const mostViewedProperty = properties.length > 0
+    ? [...properties].sort((a, b) => (b.views || 0) - (a.views || 0))[0]
+    : null;
+
+  const mostSavedProperty = properties.length > 0
+    ? [...properties].sort((a, b) => (b.favoritesCount || 0) - (a.favoritesCount || 0))[0]
+    : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -218,6 +228,7 @@ export default function UserDashboardClient() {
         <aside className="lg:col-span-3 flex flex-col gap-2 p-4 bg-card border border-border rounded-2xl">
           {[
             { id: "overview", label: "Dashboard Overview", icon: Building2 },
+            { id: "analytics", label: "Property Analytics", icon: BarChart3 },
             { id: "properties", label: "My Listings", icon: Building2 },
             { id: "saved", label: "Saved Properties", icon: Heart },
             { id: "recent", label: "Recently Viewed", icon: History },
@@ -250,45 +261,250 @@ export default function UserDashboardClient() {
             <div className="flex flex-col gap-8 animate-in fade-in duration-300">
               
               {/* Statistic Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4 shadow-sm text-left">
+                  <div className="p-3 rounded-xl bg-primary/10 text-primary">
+                    <Building2 className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-foreground">{properties.length}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Properties</p>
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4 shadow-sm text-left">
+                  <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-500">
+                    <Eye className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-foreground">{totalPropertyViews}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Views</p>
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4 shadow-sm text-left">
+                  <div className="p-3 rounded-xl bg-rose-500/10 text-rose-500">
+                    <Heart className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-foreground">{totalPropertySaves}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Saves</p>
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4 shadow-sm text-left">
+                  <div className="p-3 rounded-xl bg-amber-500/10 text-amber-500">
+                    <Heart className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-foreground">{savedProperties.length}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Bookmarks</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions Panel */}
+              <div className="bg-card border border-border rounded-2xl p-6 text-left flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-lg text-foreground mb-1">Property Performance Analytics</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+                    Track live views and bookmark saves on your property listings in real-time.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab("analytics")}
+                  className="px-4 py-2.5 rounded-xl bg-accent hover:bg-primary hover:text-primary-foreground text-xs font-bold transition-all flex items-center gap-1.5"
+                >
+                  <BarChart3 className="h-4 w-4" /> View Full Analytics
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: PROPERTY ANALYTICS */}
+          {activeTab === "analytics" && (
+            <div className="flex flex-col gap-8 animate-in fade-in duration-300">
+              
+              {/* Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-card border border-border rounded-2xl p-6 flex items-center gap-4 shadow-sm text-left">
                   <div className="p-3 rounded-xl bg-primary/10 text-primary">
                     <Building2 className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-2xl font-black text-foreground">{properties.length}</p>
-                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Total Listings</p>
+                    <p className="text-3xl font-black text-foreground">{properties.length}</p>
+                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Total Properties</p>
                   </div>
                 </div>
 
                 <div className="bg-card border border-border rounded-2xl p-6 flex items-center gap-4 shadow-sm text-left">
                   <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-500">
-                    <Building2 className="h-6 w-6" />
+                    <Eye className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-2xl font-black text-foreground">{activeProperties.length}</p>
-                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Active Listings</p>
+                    <p className="text-3xl font-black text-foreground">{totalPropertyViews}</p>
+                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Total Property Views</p>
                   </div>
                 </div>
 
                 <div className="bg-card border border-border rounded-2xl p-6 flex items-center gap-4 shadow-sm text-left">
-                  <div className="p-3 rounded-xl bg-amber-500/10 text-amber-500">
+                  <div className="p-3 rounded-xl bg-rose-500/10 text-rose-500">
                     <Heart className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-2xl font-black text-foreground">{savedProperties.length}</p>
-                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Bookmarks</p>
+                    <p className="text-3xl font-black text-foreground">{totalPropertySaves}</p>
+                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Total Property Saves</p>
                   </div>
                 </div>
               </div>
 
-              {/* Quick Actions Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 text-left">
-                <h3 className="font-bold text-lg text-foreground mb-4">Quick Account Guide</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-                  Listed properties require clean documentations. To attach a custom listing video, upload it in the <strong>Media Manager</strong> tab, copy the generated URL, and paste it into the listing creation form.
-                </p>
+              {/* Spotlight Cards: Most Viewed & Most Saved */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Most Viewed */}
+                <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-4 text-left shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      <TrendingUp className="h-3.5 w-3.5" /> Most Viewed Property
+                    </span>
+                    <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
+                      <Eye className="h-4 w-4" /> {mostViewedProperty?.views || 0} Views
+                    </span>
+                  </div>
+
+                  {mostViewedProperty ? (
+                    <div className="flex items-center gap-4 p-3 rounded-xl bg-accent/30 border border-border">
+                      <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted flex-shrink-0">
+                        {mostViewedProperty.imageUrls?.[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={mostViewedProperty.imageUrls[0]} alt={mostViewedProperty.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center">
+                            <Building2 className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col text-left truncate">
+                        <h4 className="font-bold text-sm text-foreground truncate">{mostViewedProperty.title}</h4>
+                        <p className="text-xs text-muted-foreground">{mostViewedProperty.area}, {mostViewedProperty.city}</p>
+                        <p className="text-xs font-bold text-primary mt-0.5">{formatPKR(mostViewedProperty.price)}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-4">No property data available.</p>
+                  )}
+                </div>
+
+                {/* Most Saved */}
+                <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-4 text-left shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                      <Award className="h-3.5 w-3.5" /> Most Saved Property
+                    </span>
+                    <span className="text-xs font-bold text-rose-500 flex items-center gap-1">
+                      <Heart className="h-4 w-4" /> {mostSavedProperty?.favoritesCount || 0} Saves
+                    </span>
+                  </div>
+
+                  {mostSavedProperty ? (
+                    <div className="flex items-center gap-4 p-3 rounded-xl bg-accent/30 border border-border">
+                      <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted flex-shrink-0">
+                        {mostSavedProperty.imageUrls?.[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={mostSavedProperty.imageUrls[0]} alt={mostSavedProperty.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center">
+                            <Building2 className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col text-left truncate">
+                        <h4 className="font-bold text-sm text-foreground truncate">{mostSavedProperty.title}</h4>
+                        <p className="text-xs text-muted-foreground">{mostSavedProperty.area}, {mostSavedProperty.city}</p>
+                        <p className="text-xs font-bold text-primary mt-0.5">{formatPKR(mostSavedProperty.price)}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-4">No property data available.</p>
+                  )}
+                </div>
               </div>
+
+              {/* Detailed Property Analytics Breakdown Table */}
+              <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+                  <h3 className="font-bold text-base text-foreground">Property Analytics Breakdown</h3>
+                  <span className="text-xs text-muted-foreground">{properties.length} listings</span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-accent/40 text-xs uppercase font-bold tracking-wider text-muted-foreground border-b border-border">
+                      <tr>
+                        <th className="px-6 py-4">Property</th>
+                        <th className="px-6 py-4">City / Area</th>
+                        <th className="px-6 py-4">Price</th>
+                        <th className="px-6 py-4">Upload Date</th>
+                        <th className="px-6 py-4 text-center">👁 Views</th>
+                        <th className="px-6 py-4 text-center">❤️ Saved</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {properties.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                            No property listings found.
+                          </td>
+                        </tr>
+                      ) : (
+                        properties.map((p) => {
+                          const uploadDate = new Date(p.createdAt).toLocaleDateString("en-PK", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          });
+
+                          return (
+                            <tr key={p.id} className="hover:bg-accent/10 transition-colors">
+                              <td className="px-6 py-4 font-bold text-foreground">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-12 w-12 rounded-xl overflow-hidden bg-muted flex-shrink-0">
+                                    {p.imageUrls?.[0] ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img src={p.imageUrls[0]} alt={p.title} className="h-full w-full object-cover" />
+                                    ) : (
+                                      <div className="h-full w-full flex items-center justify-center">
+                                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span className="truncate max-w-[200px]">{p.title}</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-muted-foreground">{p.area}, {p.city}</td>
+                              <td className="px-6 py-4 font-bold text-primary">{formatPKR(p.price)}</td>
+                              <td className="px-6 py-4 text-muted-foreground text-xs">{uploadDate}</td>
+                              <td className="px-6 py-4 text-center">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                  <Eye className="h-3.5 w-3.5" />
+                                  {p.views ?? 0}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                  <Heart className="h-3.5 w-3.5" />
+                                  {p.favoritesCount ?? 0}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -307,6 +523,7 @@ export default function UserDashboardClient() {
                       <th className="px-6 py-4">Property</th>
                       <th className="px-6 py-4">Area Location</th>
                       <th className="px-6 py-4">Price</th>
+                      <th className="px-6 py-4 text-center">Analytics</th>
                       <th className="px-6 py-4">Status</th>
                       <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
@@ -314,7 +531,7 @@ export default function UserDashboardClient() {
                   <tbody className="divide-y divide-border">
                     {properties.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
                           You haven&apos;t listed any properties yet. Click &quot;Add Property&quot; to begin!
                         </td>
                       </tr>
@@ -338,6 +555,16 @@ export default function UserDashboardClient() {
                           </td>
                           <td className="px-6 py-4 text-muted-foreground">{p.area}, {p.city}</td>
                           <td className="px-6 py-4 font-bold text-primary">{formatPKR(p.price)}</td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex items-center justify-center gap-2 text-xs font-bold">
+                              <span className="inline-flex items-center gap-1 text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">
+                                <Eye className="h-3 w-3" /> {p.views ?? 0}
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded">
+                                <Heart className="h-3 w-3" /> {p.favoritesCount ?? 0}
+                              </span>
+                            </div>
+                          </td>
                           <td className="px-6 py-4">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${
                               p.status === "AVAILABLE" ? "bg-green-500/10 text-green-500" : "bg-muted text-muted-foreground"

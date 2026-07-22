@@ -20,37 +20,55 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       name: "credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const parsedCredentials = loginSchema.safeParse(credentials);
+        const authStart = Date.now();
+        try {
+          const parsedCredentials = loginSchema.safeParse(credentials);
 
-        if (!parsedCredentials.success) {
+          if (!parsedCredentials.success) {
+            return null;
+          }
+
+          const { email, password } = parsedCredentials.data;
+          const user = await db.user.findUnique({
+            where: { email },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              password: true,
+              role: true,
+            },
+          });
+
+          if (!user || !user.password) {
+            console.log(`[Perf Audit] Auth check failed (User not found) in ${Date.now() - authStart}ms`);
+            return null;
+          }
+
+          const passwordsMatch = await bcrypt.compare(password, user.password);
+          const duration = Date.now() - authStart;
+
+          if (passwordsMatch) {
+            console.log(`[Perf Audit] Authentication response time: ${duration}ms (Success)`);
+            return {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              image: user.image,
+              role: user.role,
+            };
+          }
+
+          console.log(`[Perf Audit] Authentication response time: ${duration}ms (Invalid Password)`);
+          return null;
+        } catch (err) {
+          console.error(`[Perf Audit] Authentication error after ${Date.now() - authStart}ms:`, err);
           return null;
         }
-
-        const { email, password } = parsedCredentials.data;
-        const user = await db.user.findUnique({
-          where: { email },
-        });
-
-        if (!user || !user.password) {
-          return null;
-        }
-
-        const passwordsMatch = await bcrypt.compare(password, user.password);
-
-        if (passwordsMatch) {
-          return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            image: user.image,
-            role: user.role,
-          };
-        }
-
-        return null;
       },
     }),
   ],
@@ -65,18 +83,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return session;
     },
-    async jwt({ token }) {
+    async jwt({ token, user }) {
       if (!token.sub) return token;
 
-      const existingUser = await db.user.findUnique({
-        where: { id: token.sub },
-      });
+      // If user object was passed on initial login, populate token immediately without DB lookup
+      if (user) {
+        token.name = user.name;
+        token.email = user.email;
+        token.role = (user as any).role;
+        return token;
+      }
 
-      if (!existingUser) return token;
+      // Fast check only when token needs refresh
+      if (!token.role) {
+        const jwtStart = Date.now();
+        const existingUser = await db.user.findUnique({
+          where: { id: token.sub },
+          select: { name: true, email: true, role: true },
+        });
 
-      token.name = existingUser.name;
-      token.email = existingUser.email;
-      token.role = existingUser.role;
+        console.log(`[Perf Audit] JWT lookup completed in ${Date.now() - jwtStart}ms`);
+
+        if (!existingUser) return token;
+
+        token.name = existingUser.name;
+        token.email = existingUser.email;
+        token.role = existingUser.role;
+      }
 
       return token;
     },

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Bed, Bath, Maximize, MapPin, Building, Eye } from "lucide-react";
+import { Bed, Bath, Maximize, MapPin, Building, Eye, Heart } from "lucide-react";
+import { useSession } from "next-auth/react";
 import SavePropertyButton from "./SavePropertyButton";
 import LazyImage from "@/components/ui/LazyImage";
 
@@ -23,7 +24,9 @@ export interface Property {
   imageUrls: string[];
   videoUrl: string | null;
   views?: number;
+  favoritesCount?: number;
   createdAt?: Date | string;
+  ownerId?: string;
   owner?: {
     name: string | null;
     profileImage: string | null;
@@ -45,6 +48,9 @@ const formatArea = (marlas: number) => {
 };
 
 export default function PropertyCard({ property, index = 0 }: PropertyCardProps) {
+  const { data: session } = useSession();
+  const isOwner = !!(session?.user?.id && property.ownerId && session.user.id === property.ownerId);
+
   const mainImage =
     property.imageUrls?.[0] ||
     "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600&q=80";
@@ -152,11 +158,18 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
           </div>
         </div>
 
-        {/* View count */}
-        {typeof property.views === "number" && property.views > 0 && (
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
-            <Eye className="h-3 w-3" />
-            <span>{property.views.toLocaleString()} views</span>
+        {/* View & Save counts - only visible to the property owner */}
+        {isOwner && (
+          <div className="flex items-center gap-3 text-[10px] font-bold py-1 px-2 rounded bg-accent/40 w-fit">
+            <span className="flex items-center gap-1 text-emerald-500">
+              <Eye className="h-3.5 w-3.5" />
+              {property.views ?? 0} Views
+            </span>
+            <span className="h-3 w-px bg-border/60" />
+            <span className="flex items-center gap-1 text-rose-500">
+              <Heart className="h-3.5 w-3.5 fill-rose-500 text-rose-500" />
+              {property.favoritesCount ?? 0} Saves
+            </span>
           </div>
         )}
 

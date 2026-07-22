@@ -1,29 +1,5 @@
-import { db } from "@/lib/db";
+import { getHomepageStats } from "@/lib/data";
 import { Building2, Users, MapPin, Eye } from "lucide-react";
-
-async function getStats() {
-  try {
-    const [totalProperties, totalUsers, totalViews, citiesRaw] = await Promise.all([
-      db.property.count({ where: { isApproved: true } }),
-      db.user.count(),
-      db.property.aggregate({ _sum: { views: true } }),
-      db.property.findMany({
-        where: { isApproved: true },
-        select: { city: true },
-        distinct: ["city"],
-      }),
-    ]);
-
-    return {
-      totalProperties,
-      totalUsers,
-      totalViews: totalViews._sum.views ?? 0,
-      totalCities: citiesRaw.length,
-    };
-  } catch {
-    return { totalProperties: 0, totalUsers: 0, totalViews: 0, totalCities: 0 };
-  }
-}
 
 function formatNumber(n: number) {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k+`;
@@ -31,7 +7,7 @@ function formatNumber(n: number) {
 }
 
 export default async function StatsSection() {
-  const stats = await getStats();
+  const stats = await getHomepageStats();
 
   const items = [
     {
@@ -72,7 +48,7 @@ export default async function StatsSection() {
             Peshawar Property Hub in Numbers
           </h2>
           <p className="text-muted-foreground text-sm mt-2">
-            Trusted numbers from Peshawar's leading property marketplace
+            Trusted numbers from Peshawar&apos;s leading property marketplace
           </p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">

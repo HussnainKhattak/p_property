@@ -74,9 +74,10 @@ model Property {
   bathrooms    Int            @default(0)
   imageUrls    String[]       // Cloudinary image URLs (array)
   videoUrl     String?        // Cloudinary video URL
-  views        Int            @default(0)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  views          Int            @default(0)
+  favoritesCount Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   ownerId String   @db.ObjectId
   owner   User     @relation(fields: [ownerId], references: [id])
@@ -91,8 +92,12 @@ model Property {
   @@index([propertyType])
   @@index([createdAt])
   @@index([views])
+  @@index([favoritesCount])
   @@index([isApproved])
   @@index([status])
+  @@index([isApproved, status, views])
+  @@index([isApproved, status, createdAt])
+  @@index([isApproved, status, area])
 }
 
 // ─── NextAuth Required Models ─────────────────────────
@@ -174,4 +179,6 @@ model SavedProperty {
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@unique([userId, propertyId])
+  @@index([userId])
+  @@index([propertyId])
 }

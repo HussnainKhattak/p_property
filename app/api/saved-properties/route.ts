@@ -60,14 +60,13 @@ export async function POST(req: Request) {
       },
     });
 
+    let isSaved = false;
     if (existingBookmark) {
       // Unbookmark
       await db.savedProperty.delete({
-        where: {
-          id: existingBookmark.id,
-        },
+        where: { id: existingBookmark.id },
       });
-      return NextResponse.json({ saved: false, message: "Removed from saved properties" });
+      isSaved = false;
     } else {
       // Bookmark
       await db.savedProperty.create({
@@ -76,8 +75,24 @@ export async function POST(req: Request) {
           propertyId,
         },
       });
-      return NextResponse.json({ saved: true, message: "Added to saved properties" });
+      isSaved = true;
     }
+
+    // Keep Property.favoritesCount synchronized with actual count
+    const actualCount = await db.savedProperty.count({
+      where: { propertyId },
+    });
+
+    await db.property.update({
+      where: { id: propertyId },
+      data: { favoritesCount: actualCount },
+    });
+
+    return NextResponse.json({
+      saved: isSaved,
+      favoritesCount: actualCount,
+      message: isSaved ? "Added to saved properties" : "Removed from saved properties",
+    });
   } catch (err: unknown) {
     const error = err as Error;
     return NextResponse.json({ error: "Bookmark operation failed: " + error.message }, { status: 500 });

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronRight, MapPin, Building } from "lucide-react";
-import { db } from "@/lib/db";
+import { getPopularAreas as fetchPopularAreas } from "@/lib/data";
 
 // Known Peshawar areas with static descriptions and sub-areas
 const AREA_META: Record<
@@ -39,32 +39,17 @@ const AREA_META: Record<
   },
 };
 
-async function getPopularAreas() {
-  try {
-    // Group properties by area from real DB
-    const grouped = await db.property.groupBy({
-      by: ["area"],
-      where: { isApproved: true, status: "AVAILABLE" },
-      _count: { id: true },
-      orderBy: { _count: { id: "desc" } },
-      take: 4,
-    });
-
-    return grouped.map((g) => ({
-      name: g.area,
-      count: g._count.id,
-      ...(AREA_META[g.area] ?? {
-        description: `Properties available in ${g.area}, Peshawar.`,
-        subAreas: [],
-      }),
-    }));
-  } catch {
-    return [];
-  }
-}
-
 export default async function PopularAreas() {
-  const areas = await getPopularAreas();
+  const rawAreas = await fetchPopularAreas();
+
+  const areas = rawAreas.map((g) => ({
+    name: g.area,
+    count: g._count.id,
+    ...(AREA_META[g.area] ?? {
+      description: `Properties available in ${g.area}, Peshawar.`,
+      subAreas: [],
+    }),
+  }));
 
   if (areas.length === 0) return null;
 

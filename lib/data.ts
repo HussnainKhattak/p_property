@@ -23,6 +23,7 @@ const PROPERTY_CARD_SELECT = {
   area: true,
   city: true,
   propertyType: true,
+  subcategory: true,
   listingType: true,
   bedrooms: true,
   bathrooms: true,

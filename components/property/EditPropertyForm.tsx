@@ -28,6 +28,7 @@ interface EditPropertyFormProps {
     area: string;
     address: string;
     propertyType: string;
+    subcategory?: string;
     listingType: string;
     bedrooms: number;
     bathrooms: number;
@@ -48,6 +49,7 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
     area:         property.area,
     address:      property.address,
     propertyType: property.propertyType,
+    subcategory:  property.subcategory || (property.propertyType === "PLOT" ? "RESIDENTIAL" : (property.listingType || "SALE")),
     listingType:  property.listingType,
     bedrooms:     property.bedrooms.toString(),
     bathrooms:    property.bathrooms.toString(),
@@ -63,7 +65,14 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
   const [success, setSuccess] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm((p) => {
+      const updated = { ...p, [name]: value };
+      if (name === "propertyType") {
+        updated.subcategory = value === "PLOT" ? "RESIDENTIAL" : "SALE";
+      }
+      return updated;
+    });
     setError("");
   };
 
@@ -114,11 +123,15 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
     }
 
     try {
+      const isPlot = form.propertyType === "PLOT";
+      const finalListingType = isPlot ? "SALE" : (form.subcategory === "RENT" ? "RENT" : "SALE");
+
       const res = await fetch(`/api/properties/${property.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          listingType: finalListingType,
           imageUrls,
           price: parseFloat(form.price),
           marla: parseFloat(form.marla),
@@ -214,7 +227,7 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
             </div>
 
             {/* Price */}
-            <div className="flex flex-col gap-1.5">
+            <div className="col-span-1 sm:col-span-2 flex flex-col gap-1.5">
               <label htmlFor="price" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 Price (PKR)
               </label>
@@ -230,23 +243,6 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
                   className="w-full h-11 pl-10 pr-4 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
                 />
               </div>
-            </div>
-
-            {/* Listing Type */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="listingType" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Listing Type
-              </label>
-              <select
-                id="listingType"
-                name="listingType"
-                value={form.listingType}
-                onChange={handleChange}
-                className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
-              >
-                <option value="SALE">For Sale</option>
-                <option value="RENT">For Rent</option>
-              </select>
             </div>
           </div>
         </div>
@@ -320,10 +316,10 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
           </h3>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {/* Property Type */}
-            <div className="flex flex-col gap-1.5 col-span-2">
+            {/* Category */}
+            <div className="flex flex-col gap-1.5 col-span-2 sm:col-span-2">
               <label htmlFor="propertyType" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Property Type
+                Category
               </label>
               <select
                 id="propertyType"
@@ -332,11 +328,36 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
                 onChange={handleChange}
                 className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
               >
-                <option value="HOUSE">House</option>
                 <option value="APARTMENT">Apartment</option>
+                <option value="HOUSE">House</option>
+                <option value="SHOP">Shop</option>
                 <option value="PLOT">Plot</option>
-                <option value="COMMERCIAL">Commercial Plaza</option>
-                <option value="OFFICE">Corporate Office</option>
+              </select>
+            </div>
+
+            {/* Subcategory */}
+            <div className="flex flex-col gap-1.5 col-span-2 sm:col-span-2">
+              <label htmlFor="subcategory" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Subcategory
+              </label>
+              <select
+                id="subcategory"
+                name="subcategory"
+                value={form.subcategory}
+                onChange={handleChange}
+                className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
+              >
+                {form.propertyType === "PLOT" ? (
+                  <>
+                    <option value="RESIDENTIAL">Residential Plot</option>
+                    <option value="COMMERCIAL">Commercial Plot</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="SALE">For Sale</option>
+                    <option value="RENT">For Rent</option>
+                  </>
+                )}
               </select>
             </div>
 
@@ -358,7 +379,7 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
             </div>
 
             {/* Bedrooms */}
-            {form.propertyType !== "PLOT" && (
+            {["HOUSE", "APARTMENT"].includes(form.propertyType) && (
               <>
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="bedrooms" className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">

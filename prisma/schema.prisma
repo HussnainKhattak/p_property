@@ -21,11 +21,10 @@ enum ListingType {
 }
 
 enum PropertyType {
-  HOUSE
   APARTMENT
+  HOUSE
+  SHOP
   PLOT
-  COMMERCIAL
-  OFFICE
 }
 
 enum PropertyStatus {
@@ -67,6 +66,7 @@ model Property {
   area         String
   address      String
   propertyType PropertyType
+  subcategory  String         @default("")
   listingType  ListingType    @default(SALE)
   status       PropertyStatus @default(AVAILABLE)
   isApproved   Boolean        @default(true)
@@ -90,6 +90,7 @@ model Property {
   @@index([area])
   @@index([price])
   @@index([propertyType])
+  @@index([subcategory])
   @@index([createdAt])
   @@index([views])
   @@index([favoritesCount])
@@ -181,4 +182,14 @@ model SavedProperty {
   @@unique([userId, propertyId])
   @@index([userId])
   @@index([propertyId])
+}
+
+model Category {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
+  title       String
+  description String
+  image       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

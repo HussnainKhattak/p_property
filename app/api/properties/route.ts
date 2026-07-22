@@ -33,6 +33,7 @@ export async function POST(req: Request) {
         area:         parsed.data.area,
         address:      parsed.data.address,
         propertyType: parsed.data.propertyType,
+        subcategory:  parsed.data.subcategory,
         listingType:  parsed.data.listingType,
         bedrooms:     parsed.data.bedrooms,
         bathrooms:    parsed.data.bathrooms,
@@ -65,14 +66,16 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const area       = searchParams.get("area");
-    const propType   = searchParams.get("propertyType");
-    const listType   = searchParams.get("listingType");
+    const area        = searchParams.get("area");
+    const propType    = searchParams.get("propertyType");
+    const listType    = searchParams.get("listingType");
+    const subcategory = searchParams.get("subcategory");
 
     const where: Prisma.PropertyWhereInput = {};
-    if (area)     where.area         = { contains: area,     mode: "insensitive" };
-    if (propType) where.propertyType = propType as PropertyType;
-    if (listType) where.listingType  = listType as ListingType;
+    if (area)        where.area         = { contains: area,     mode: "insensitive" };
+    if (propType)    where.propertyType = propType as PropertyType;
+    if (listType)    where.listingType  = listType as ListingType;
+    if (subcategory) where.subcategory  = subcategory;
 
     const properties = await db.property.findMany({
       where,

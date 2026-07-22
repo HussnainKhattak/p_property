@@ -14,6 +14,7 @@ export interface SearchFilters {
   minMarla:     string;
   maxMarla:     string;
   propertyType: string;
+  subcategory:  string;
   listingType:  string;
   bedrooms:     string;
   bathrooms:    string;
@@ -22,7 +23,7 @@ export interface SearchFilters {
 
 export const DEFAULT_FILTERS: SearchFilters = {
   query: "", city: "", area: "", minPrice: "", maxPrice: "",
-  minMarla: "", maxMarla: "", propertyType: "", listingType: "",
+  minMarla: "", maxMarla: "", propertyType: "", subcategory: "", listingType: "",
   bedrooms: "", bathrooms: "", sortBy: "newest",
 };
 
@@ -32,12 +33,11 @@ const AREAS = [
 ];
 
 const PROPERTY_TYPES = [
-  { value: "",            label: "All Types",  Icon: LayoutGrid  },
-  { value: "HOUSE",       label: "House",      Icon: Home        },
+  { value: "",            label: "All",        Icon: LayoutGrid  },
   { value: "APARTMENT",   label: "Apartment",  Icon: Building2   },
+  { value: "HOUSE",       label: "House",      Icon: Home        },
+  { value: "SHOP",        label: "Shop",       Icon: Warehouse   },
   { value: "PLOT",        label: "Plot",       Icon: LayoutGrid  },
-  { value: "COMMERCIAL",  label: "Commercial", Icon: Warehouse   },
-  { value: "OFFICE",      label: "Office",     Icon: Briefcase   },
 ];
 
 const SORT_OPTIONS = [
@@ -61,6 +61,13 @@ export default function PropertySearchFilters({
   const set = useCallback(
     (key: keyof SearchFilters) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       onChange({ ...filters, [key]: e.target.value });
+    },
+    [filters, onChange]
+  );
+
+  const handlePropertyTypeChange = useCallback(
+    (value: string) => {
+      onChange({ ...filters, propertyType: value, subcategory: "" });
     },
     [filters, onChange]
   );
@@ -145,13 +152,13 @@ export default function PropertySearchFilters({
       {/* Property Type */}
       <div className="flex flex-col gap-1.5">
         <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          Property Type
+          Category
         </label>
         <div className="grid grid-cols-3 gap-1.5">
           {PROPERTY_TYPES.map(({ value, label, Icon }) => (
             <button
               key={value}
-              onClick={() => setDirect("propertyType", value)}
+              onClick={() => handlePropertyTypeChange(value)}
               className={`flex flex-col items-center justify-center gap-1 h-16 rounded-xl border text-xs font-semibold transition-all duration-200 ${
                 filters.propertyType === value
                   ? "border-primary bg-primary/10 text-primary shadow-sm"
@@ -164,6 +171,33 @@ export default function PropertySearchFilters({
           ))}
         </div>
       </div>
+
+      {/* Subcategory */}
+      {filters.propertyType && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Subcategory
+          </label>
+          <select
+            value={filters.subcategory}
+            onChange={set("subcategory")}
+            className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-semibold"
+          >
+            <option value="">All Subcategories</option>
+            {filters.propertyType === "PLOT" ? (
+              <>
+                <option value="RESIDENTIAL">Residential Plot</option>
+                <option value="COMMERCIAL">Commercial Plot</option>
+              </>
+            ) : (
+              <>
+                <option value="SALE">For Sale</option>
+                <option value="RENT">For Rent</option>
+              </>
+            )}
+          </select>
+        </div>
+      )}
 
       {/* Area */}
       <div className="flex flex-col gap-1.5">

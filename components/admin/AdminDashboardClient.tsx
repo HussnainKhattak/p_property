@@ -5,7 +5,7 @@ import {
   Users, Building2, Eye, Trash2, CheckCircle2, XCircle, Search, 
   ShieldAlert, RefreshCw, Layers, Sparkles, ShieldCheck,
   TrendingUp, Activity, ShieldAlert as AlertIcon,
-  CheckCircle, AlertTriangle, X
+  CheckCircle, AlertTriangle, X, SlidersHorizontal, Loader2
 } from "lucide-react";
 import { formatPKR } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,11 +52,20 @@ interface Toast {
   id: string;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  image: string;
+}
+
 export default function AdminDashboardClient() {
-  const [activeTab, setActiveTab] = useState<"overview" | "properties" | "users">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "properties" | "users" | "categories">("overview");
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   
   // Search and Loading states
   const [userQuery, setUserQuery] = useState("");
@@ -64,7 +73,15 @@ export default function AdminDashboardClient() {
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingProperties, setLoadingProperties] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
+
+  // Edit category states
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editImage, setEditImage] = useState("");
+  const [savingCategory, setSavingCategory] = useState(false);
 
   // Custom inline modals and toasts
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -146,10 +163,68 @@ export default function AdminDashboardClient() {
     }
   };
 
+  // Fetch Categories list
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const res = await fetch("/api/admin/categories");
+      if (res.ok) {
+        const data = await res.json();
+        setCategories(data);
+      } else {
+        showToast("Failed to fetch category definitions", "error");
+      }
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+      showToast("Connection error fetching categories", "error");
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  const handleEditCategory = (cat: Category) => {
+    setEditingCategory(cat);
+    setEditTitle(cat.title);
+    setEditDescription(cat.description);
+    setEditImage(cat.image);
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+    setSavingCategory(true);
+    try {
+      const res = await fetch(`/api/admin/categories/${editingCategory.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editTitle,
+          description: editDescription,
+          image: editImage,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCategories((prev) => prev.map((c) => (c.id === data.id ? data : c)));
+        showToast("Category settings updated successfully", "success");
+        setEditingCategory(null);
+      } else {
+        const errData = await res.json();
+        showToast(errData.error || "Failed to update category details", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Connection error updating category", "error");
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
     fetchUsers();
     fetchProperties();
+    fetchCategories();
   }, []);
 
   // Handle User Search Input
@@ -392,7 +467,7 @@ export default function AdminDashboardClient() {
         </div>
         
         <button 
-          onClick={() => { fetchStats(); fetchUsers(); fetchProperties(); showToast("Dashboard data reloaded"); }}
+          onClick={() => { fetchStats(); fetchUsers(); fetchProperties(); fetchCategories(); showToast("Dashboard data reloaded"); }}
           className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent/80 text-foreground font-semibold border border-border rounded-xl text-xs transition-all self-start sm:self-center hover-lift shadow-sm"
         >
           <RefreshCw className="h-3.5 w-3.5" /> Reload Catalog
@@ -400,24 +475,30 @@ export default function AdminDashboardClient() {
       </div>
 
       {/* Modern Tabs Menu */}
-      <div className="flex border-b border-border gap-2 mb-8 overflow-x-auto pb-px">
+      <div className="flex border-b border-border gap-0 mb-8 overflow-x-auto pb-px">
         {[
-          { id: "overview", label: "Dashboard Overview", icon: Layers },
-          { id: "properties", label: "Properties Moderation", icon: Building2 },
-          { id: "users", label: "Access & User Directory", icon: Users },
+          { id: "overview",    label: "Overview",    icon: Layers          },
+          { id: "properties", label: "Properties",   icon: Building2       },
+          { id: "users",      label: "Users",        icon: Users            },
+          { id: "categories", label: "Categories",   icon: SlidersHorizontal },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as "overview" | "properties" | "users")}
-              className={`flex items-center gap-2 px-5 py-3.5 border-b-2 font-bold text-sm whitespace-nowrap transition-all duration-300 ${
+              onClick={() => {
+                setActiveTab(tab.id as "overview" | "properties" | "users" | "categories");
+                if (tab.id === "categories") fetchCategories();
+                if (tab.id === "properties") fetchProperties();
+                if (tab.id === "users") fetchUsers();
+              }}
+              className={`flex items-center gap-1.5 px-4 py-3 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 ${
                 activeTab === tab.id
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Icon className="h-4.5 w-4.5" />
+              <Icon className="h-4 w-4" />
               {tab.label}
             </button>
           );
@@ -804,6 +885,164 @@ export default function AdminDashboardClient() {
                 ))
               )}
             </div>
+          </div>
+        )}
+
+        {/* ──────── TAB: CATEGORIES ──────── */}
+        {activeTab === "categories" && (
+          <div className="bg-card border border-border rounded-2xl shadow-md p-6 sm:p-8 flex flex-col gap-6 text-left animate-in fade-in duration-300">
+            <div>
+              <h3 className="font-extrabold text-xl text-foreground">Category Directory Settings</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Customize titles, description subtexts, and background cover images for the 4 permanent system-defined categories.
+              </p>
+            </div>
+
+            <div className="h-px bg-border/60 w-full" />
+
+            {loadingCategories ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+                <div className="p-4 rounded-2xl bg-accent/50">
+                  <SlidersHorizontal className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground">No categories found</p>
+                  <p className="text-sm text-muted-foreground mt-1">Categories may not be seeded yet. Run <code className="bg-accent px-1.5 py-0.5 rounded text-xs">npx tsx prisma/seed.ts</code> and click Reload.</p>
+                </div>
+                <button
+                  onClick={fetchCategories}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-bold text-sm rounded-xl shadow transition-all"
+                >
+                  <RefreshCw className="h-4 w-4" /> Retry Loading
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {categories.map((cat) => (
+                  <div key={cat.id} className="border border-border rounded-2xl overflow-hidden shadow bg-card flex flex-col group hover:border-primary/20 transition-all duration-300">
+                    <div className="h-40 bg-zinc-800 relative bg-cover bg-center" style={{ backgroundImage: `url('${cat.image}')` }}>
+                      <div className="absolute inset-0 bg-black/60" />
+                      <div className="absolute inset-0 p-5 flex flex-col justify-end text-white text-left">
+                        <span className="text-[10px] uppercase font-black tracking-widest text-primary-foreground bg-primary px-2.5 py-0.5 rounded-lg w-fit mb-1">
+                          {cat.name}
+                        </span>
+                        <h4 className="font-extrabold text-lg sm:text-xl truncate text-white">{cat.title}</h4>
+                      </div>
+                    </div>
+                    <div className="p-5 flex-1 flex flex-col justify-between text-left gap-4">
+                      <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                        {cat.description}
+                      </p>
+                      <button
+                        onClick={() => handleEditCategory(cat)}
+                        className="w-full py-2 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground font-bold text-xs rounded-xl border border-primary/20 transition-all duration-300 shadow-sm"
+                      >
+                        Edit Category Details
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Inline edit overlay modal */}
+            {editingCategory && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-xl overflow-hidden"
+                >
+                  <form onSubmit={handleSaveCategory}>
+                    <div className="p-6 sm:p-8 flex flex-col gap-5 text-left">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-extrabold text-foreground">
+                          Modify {editingCategory.name.charAt(0) + editingCategory.name.slice(1).toLowerCase()} Category
+                        </h3>
+                        <button 
+                          type="button" 
+                          onClick={() => setEditingCategory(null)}
+                          className="p-1.5 rounded-lg border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-all"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="h-px bg-border/60 w-full" />
+
+                      {/* Title */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                          Hero Callout Title
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          className="w-full h-10 px-3.5 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold"
+                        />
+                      </div>
+
+                      {/* Description */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                          Search Description
+                        </label>
+                        <textarea
+                          required
+                          rows={3}
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                        />
+                      </div>
+
+                      {/* Cover Image URL */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                          Cover Image URL
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editImage}
+                          onChange={(e) => setEditImage(e.target.value)}
+                          className="w-full h-10 px-3.5 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-mono text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-accent/40 border-t border-border px-6 py-4 flex justify-end gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setEditingCategory(null)}
+                        className="h-10 px-4 rounded-xl border border-border hover:bg-accent text-sm font-semibold text-foreground transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={savingCategory}
+                        className="h-10 px-5 bg-primary text-primary-foreground font-bold hover:bg-primary/95 rounded-xl text-sm transition-all shadow-md flex items-center gap-1.5"
+                      >
+                        {savingCategory ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" /> Saving...
+                          </>
+                        ) : (
+                          "Save Settings"
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              </div>
+            )}
           </div>
         )}
 

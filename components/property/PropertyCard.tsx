@@ -15,7 +15,8 @@ export interface Property {
   address: string;
   area: string;
   city: string;
-  propertyType: "HOUSE" | "APARTMENT" | "PLOT" | "COMMERCIAL" | "OFFICE";
+  propertyType: "HOUSE" | "APARTMENT" | "SHOP" | "PLOT";
+  subcategory: string;
   listingType: "SALE" | "RENT";
   bedrooms: number;
   bathrooms: number;
@@ -96,7 +97,7 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
         </div>
 
         {/* Wishlist button */}
-        <div className="absolute top-3 right-3">
+        <div className="absolute top-3 right-3 z-20">
           <SavePropertyButton propertyId={property.id} />
         </div>
 

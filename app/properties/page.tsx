@@ -20,6 +20,7 @@ async function getInitialProperties(sp: Record<string, string | string[] | undef
   const maxMarla    = get("maxMarla");
   const propType    = get("propertyType");
   const listType    = get("listingType");
+  const subcategory = get("subcategory");
   const bedrooms    = get("bedrooms");
   const bathrooms   = get("bathrooms");
   const sortBy      = get("sortBy") || "newest";
@@ -37,16 +38,17 @@ async function getInitialProperties(sp: Record<string, string | string[] | undef
             ],
           }
         : {},
-      city     ? { city: { contains: city, mode: "insensitive" } }                             : {},
-      area     ? { area: { contains: area, mode: "insensitive" } }                             : {},
-      propType ? { propertyType: propType as Prisma.EnumPropertyTypeFilter["equals"] }         : {},
-      listType ? { listingType:  listType as Prisma.EnumListingTypeFilter["equals"]  }         : {},
-      minPrice ? { price: { gte: parseFloat(minPrice) } }                                      : {},
-      maxPrice ? { price: { lte: parseFloat(maxPrice) } }                                      : {},
-      minMarla ? { marla: { gte: parseFloat(minMarla) } }                                      : {},
-      maxMarla ? { marla: { lte: parseFloat(maxMarla) } }                                      : {},
-      bedrooms  ? { bedrooms:  { gte: parseInt(bedrooms)  } }                                  : {},
-      bathrooms ? { bathrooms: { gte: parseInt(bathrooms) } }                                  : {},
+      city        ? { city: { contains: city, mode: "insensitive" } }                             : {},
+      area        ? { area: { contains: area, mode: "insensitive" } }                             : {},
+      propType    ? { propertyType: propType as Prisma.EnumPropertyTypeFilter["equals"] }         : {},
+      listType    ? { listingType:  listType as Prisma.EnumListingTypeFilter["equals"]  }         : {},
+      subcategory ? { subcategory:  subcategory }                                                 : {},
+      minPrice    ? { price: { gte: parseFloat(minPrice) } }                                      : {},
+      maxPrice    ? { price: { lte: parseFloat(maxPrice) } }                                      : {},
+      minMarla    ? { marla: { gte: parseFloat(minMarla) } }                                      : {},
+      maxMarla    ? { marla: { lte: parseFloat(maxMarla) } }                                      : {},
+      bedrooms    ? { bedrooms:  { gte: parseInt(bedrooms)  } }                                  : {},
+      bathrooms   ? { bathrooms: { gte: parseInt(bathrooms) } }                                  : {},
     ],
   };
 

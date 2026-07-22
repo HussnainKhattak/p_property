@@ -15,11 +15,10 @@ const locations = [
 ];
 
 const propertyTypes = [
-  { label: "House", value: "HOUSE" },
   { label: "Apartment", value: "APARTMENT" },
+  { label: "House", value: "HOUSE" },
+  { label: "Shop", value: "SHOP" },
   { label: "Plot", value: "PLOT" },
-  { label: "Commercial", value: "COMMERCIAL" },
-  { label: "Office", value: "OFFICE" },
 ];
 
 
@@ -226,7 +225,15 @@ export default function Hero() {
                 {/* Search Button */}
                 <motion.div whileHover={hoverScale} whileTap={tapScale}>
                   <Link
-                    href={`/properties?type=${listingType}&location=${encodeURIComponent(location)}&propertyType=${propertyType}&price=${priceRange}`}
+                    href={`/properties?listingType=${listingType}&area=${encodeURIComponent(location)}&propertyType=${propertyType}${
+                      priceRange === "low"
+                        ? "&maxPrice=10000000"
+                        : priceRange === "medium"
+                        ? "&minPrice=10000000&maxPrice=50000000"
+                        : priceRange === "high"
+                        ? "&minPrice=50000000"
+                        : ""
+                    }`}
                     className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/95 transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 mt-2"
                   >
                     <Search className="h-4 w-4" />

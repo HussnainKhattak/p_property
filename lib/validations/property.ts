@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Match Prisma enum types as string validation schema
-export const PropertyTypeEnum = z.enum(["HOUSE", "APARTMENT", "PLOT", "COMMERCIAL", "OFFICE"]);
+export const PropertyTypeEnum = z.enum(["HOUSE", "APARTMENT", "SHOP", "PLOT"]);
 export const ListingTypeEnum = z.enum(["RENT", "SALE"]);
 export const PropertyStatusEnum = z.enum(["AVAILABLE", "SOLD", "RENTED"]);
 
@@ -14,6 +14,7 @@ export const propertySchema = z.object({
   area: z.string().min(3, "Area location is required"),
   marla: z.coerce.number().positive("Area size in marla must be a positive number"),
   propertyType: PropertyTypeEnum,
+  subcategory: z.string().min(1, "Subcategory selection is required"),
   listingType: ListingTypeEnum,
   bedrooms: z.coerce.number().int().nonnegative().default(0),
   bathrooms: z.coerce.number().int().nonnegative().default(0),

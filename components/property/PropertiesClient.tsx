@@ -31,6 +31,7 @@ function paramsToFilters(sp: URLSearchParams): SearchFilters {
     minMarla:     sp.get("minMarla")     || "",
     maxMarla:     sp.get("maxMarla")     || "",
     propertyType: sp.get("propertyType") || "",
+    subcategory:  sp.get("subcategory")  || "",
     listingType:  sp.get("listingType")  || "",
     bedrooms:     sp.get("bedrooms")     || "",
     bathrooms:    sp.get("bathrooms")    || "",

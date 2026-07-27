@@ -75,7 +75,11 @@ async function getInitialProperties(sp: Record<string, string | string[] | undef
   ]);
 
   return {
-    properties,
+    properties: properties.map((p) => ({
+      ...p,
+      ownerId: p.ownerId ?? undefined,
+      owner:   p.owner   ?? undefined,
+    })),
     totalCount,
     totalPages: Math.ceil(totalCount / limit),
     page,

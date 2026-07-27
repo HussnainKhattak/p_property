@@ -31,6 +31,7 @@ enum PropertyStatus {
   AVAILABLE
   SOLD
   RENTED
+  BOOKED
 }
 
 // ─────────────────────── Models ──────────────────────
@@ -79,8 +80,8 @@ model Property {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  ownerId String   @db.ObjectId
-  owner   User     @relation(fields: [ownerId], references: [id])
+  ownerId String? @db.ObjectId
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   bookings Booking[]
   reviews  Review[]

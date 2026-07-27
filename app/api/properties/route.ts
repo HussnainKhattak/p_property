@@ -70,12 +70,14 @@ export async function GET(req: Request) {
     const propType    = searchParams.get("propertyType");
     const listType    = searchParams.get("listingType");
     const subcategory = searchParams.get("subcategory");
+    const ownerId     = searchParams.get("ownerId");
 
     const where: Prisma.PropertyWhereInput = {};
     if (area)        where.area         = { contains: area,     mode: "insensitive" };
     if (propType)    where.propertyType = propType as PropertyType;
     if (listType)    where.listingType  = listType as ListingType;
     if (subcategory) where.subcategory  = subcategory;
+    if (ownerId)     where.ownerId      = ownerId;
 
     const properties = await db.property.findMany({
       where,

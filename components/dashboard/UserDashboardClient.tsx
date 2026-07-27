@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  User, Building2, Heart, History, Plus, Edit2, 
+  User, Building2, Heart, History, Plus, 
   Camera, Save, Loader2, Sparkles, Image as ImageIcon, Video, Link as LinkIcon,
   BarChart3, Eye, TrendingUp, Award, Calendar, MapPin
 } from "lucide-react";
@@ -70,22 +70,32 @@ export default function UserDashboardClient() {
       // Fetch Profile
       const profileRes = await fetch("/api/profile");
       const profileData = await profileRes.json();
-      if (profileData.user) {
-        setUser(profileData.user);
-        setProfileForm({
-          name: profileData.user.name || "",
-          phone: profileData.user.phone || "",
-          profileImage: profileData.user.profileImage || "",
-        });
+
+      // Stale session: JWT refers to a deleted user account — force re-login
+      if (!profileData.user) {
+        await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+        window.location.href = "/login?reason=session_expired";
+        return;
       }
 
-      // Fetch User's Listings
-      const propertiesRes = await fetch("/api/properties");
-      if (propertiesRes.ok) {
-        const propertiesData = await propertiesRes.json();
-        if (profileData.user?.id) {
-          const userListings = propertiesData.filter((p: any) => p.ownerId === profileData.user.id);
-          setProperties(userListings);
+      setUser(profileData.user);
+      setProfileForm({
+        name: profileData.user.name || "",
+        phone: profileData.user.phone || "",
+        profileImage: profileData.user.profileImage || "",
+      });
+
+      // Fetch User's Listings — pass ownerId as query param for server-side filtering
+      // Admin users get ALL properties so they can manage the entire platform
+      if (profileData.user?.id) {
+        const isAdmin = profileData.user.role === "ADMIN";
+        const listingsUrl = isAdmin
+          ? "/api/properties"
+          : `/api/properties?ownerId=${profileData.user.id}`;
+        const propertiesRes = await fetch(listingsUrl);
+        if (propertiesRes.ok) {
+          const propertiesData = await propertiesRes.json();
+          setProperties(propertiesData);
         }
       }
 
@@ -182,6 +192,35 @@ export default function UserDashboardClient() {
   }
 
   const activeProperties = properties.filter((p) => p.status === "AVAILABLE");
+
+  // Instant UI handlers for property management
+  const handleStatusChange = (propertyId: string, newStatus: string) => {
+    setProperties((prev) =>
+      prev.map((p) => (p.id === propertyId ? { ...p, status: newStatus } : p))
+    );
+    router.refresh(); // propagate to SSR home & /properties pages
+  };
+
+  const handlePropertyDelete = (propertyId: string) => {
+    setProperties((prev) => prev.filter((p) => p.id !== propertyId));
+    router.refresh(); // propagate to SSR home & /properties pages
+  };
+
+  // Status badge color helper
+  const getStatusBadgeClasses = (status: string) => {
+    switch (status) {
+      case "AVAILABLE":
+        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+      case "BOOKED":
+        return "bg-red-500/10 text-red-500 border-red-500/20";
+      case "SOLD":
+        return "bg-orange-500/10 text-orange-500 border-orange-500/20";
+      case "RENTED":
+        return "bg-amber-500/10 text-amber-500 border-amber-500/20";
+      default:
+        return "bg-muted text-muted-foreground border-border";
+    }
+  };
 
   // Aggregate Analytics Calculations
   const totalPropertyViews = properties.reduce((acc, p) => acc + (p.views || 0), 0);
@@ -566,22 +605,23 @@ export default function UserDashboardClient() {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${
-                              p.status === "AVAILABLE" ? "bg-green-500/10 text-green-500" : "bg-muted text-muted-foreground"
-                            }`}>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] uppercase font-bold tracking-wider border ${getStatusBadgeClasses(p.status)}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${
+                                p.status === "AVAILABLE" ? "bg-emerald-500" :
+                                p.status === "BOOKED" ? "bg-red-500" :
+                                p.status === "SOLD" ? "bg-orange-500" :
+                                p.status === "RENTED" ? "bg-amber-500" : "bg-muted-foreground"
+                              }`} />
                               {p.status}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Link
-                                href={`/properties/edit/${p.id}`}
-                                className="p-2 rounded-xl border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-all"
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Link>
-                              <DashboardActions propertyId={p.id} />
-                            </div>
+                            <DashboardActions
+                              propertyId={p.id}
+                              status={p.status}
+                              onStatusChange={handleStatusChange}
+                              onDelete={handlePropertyDelete}
+                            />
                           </td>
                         </tr>
                       ))

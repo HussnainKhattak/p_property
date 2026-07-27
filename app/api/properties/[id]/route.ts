@@ -3,6 +3,20 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { propertySchema } from "@/lib/validations/property";
 import { isValidObjectId } from "@/lib/utils";
+import { revalidatePath, revalidateTag } from "next/cache";
+
+/**
+ * Revalidate all property-related caches after a mutation.
+ */
+function revalidatePropertyCaches() {
+  revalidatePath("/");
+  revalidatePath("/properties");
+  revalidateTag("properties");
+  revalidateTag("featured-properties");
+  revalidateTag("latest-properties");
+  revalidateTag("popular-areas");
+  revalidateTag("homepage-stats");
+}
 
 // GET /api/properties/[id] — Fetch details of a single property listing
 export async function GET(
@@ -36,7 +50,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/properties/[id] — Update a property (owner only)
+// PATCH /api/properties/[id] — Update a property (owner or admin only)
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -59,9 +73,13 @@ export async function PATCH(
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
 
-    if (property.ownerId !== session.user.id) {
+    // Allow property owner OR admin
+    const isOwner = property.ownerId === session.user.id;
+    const isAdmin = session.user.role === "ADMIN";
+
+    if (!isOwner && !isAdmin) {
       return NextResponse.json(
-        { error: "Forbidden: You do not own this property" },
+        { error: "Forbidden: You do not have permission to edit this property" },
         { status: 403 }
       );
     }
@@ -96,6 +114,8 @@ export async function PATCH(
       },
     });
 
+    revalidatePropertyCaches();
+
     return NextResponse.json(updated);
   } catch (err: unknown) {
     const error = err as Error;
@@ -107,7 +127,7 @@ export async function PATCH(
 // PUT /api/properties/[id] — Alias to PATCH for standard REST compliance
 export { PATCH as PUT };
 
-// DELETE /api/properties/[id] — Delete a property (owner only)
+// DELETE /api/properties/[id] — Delete a property (owner or admin only)
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -130,14 +150,20 @@ export async function DELETE(
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
 
-    if (property.ownerId !== session.user.id) {
+    // Allow property owner OR admin
+    const isOwner = property.ownerId === session.user.id;
+    const isAdmin = session.user.role === "ADMIN";
+
+    if (!isOwner && !isAdmin) {
       return NextResponse.json(
-        { error: "Forbidden: You do not own this property" },
+        { error: "Forbidden: You do not have permission to delete this property" },
         { status: 403 }
       );
     }
 
     await db.property.delete({ where: { id: propertyId } });
+
+    revalidatePropertyCaches();
 
     return NextResponse.json({ message: "Property deleted successfully" });
   } catch (err: unknown) {

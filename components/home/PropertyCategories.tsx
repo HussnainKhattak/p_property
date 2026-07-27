@@ -62,8 +62,8 @@ async function getCategoryData() {
       orderBy: { name: "asc" },
     });
     if (categories.length > 0) return categories;
-  } catch (err) {
-    console.error("Failed to load categories from database:", err);
+  } catch (err: any) {
+    console.warn("[Categories] Database unreachable, using fallback categories:", err?.message || err);
   }
   return STATIC_FALLBACK;
 }

@@ -32,6 +32,7 @@ const PROPERTY_CARD_SELECT = {
   imageUrls: true,
   videoUrl: true,
   views: true,
+  ownerId: true,
   createdAt: true,
   owner: {
     select: {
@@ -60,13 +61,15 @@ export const getFeaturedProperties = unstable_cache(
 
       return properties.map((p) => ({
         ...p,
+        ownerId:      p.ownerId ?? undefined,
+        owner:        p.owner   ?? undefined,
         propertyType: p.propertyType as Property["propertyType"],
-        listingType: p.listingType as Property["listingType"],
-        status: p.status as Property["status"],
-        marla: Number(p.marla),
+        listingType:  p.listingType  as Property["listingType"],
+        status:       p.status       as Property["status"],
+        marla:        Number(p.marla),
       }));
-    } catch (err) {
-      console.error("[Perf Audit] Error in getFeaturedProperties:", err);
+    } catch (err: any) {
+      console.warn("[Perf Audit] Database query skipped in getFeaturedProperties:", err?.message || err);
       return [];
     }
   },
@@ -92,13 +95,15 @@ export const getLatestProperties = unstable_cache(
 
       return properties.map((p) => ({
         ...p,
+        ownerId:      p.ownerId ?? undefined,
+        owner:        p.owner   ?? undefined,
         propertyType: p.propertyType as Property["propertyType"],
-        listingType: p.listingType as Property["listingType"],
-        status: p.status as Property["status"],
-        marla: Number(p.marla),
+        listingType:  p.listingType  as Property["listingType"],
+        status:       p.status       as Property["status"],
+        marla:        Number(p.marla),
       }));
-    } catch (err) {
-      console.error("[Perf Audit] Error in getLatestProperties:", err);
+    } catch (err: any) {
+      console.warn("[Perf Audit] Database query skipped in getLatestProperties:", err?.message || err);
       return [];
     }
   },
@@ -123,8 +128,8 @@ export const getPopularAreas = unstable_cache(
 
       logTiming("getPopularAreas DB Query", start);
       return grouped;
-    } catch (err) {
-      console.error("[Perf Audit] Error in getPopularAreas:", err);
+    } catch (err: any) {
+      console.warn("[Perf Audit] Database query skipped in getPopularAreas:", err?.message || err);
       return [];
     }
   },
@@ -158,8 +163,8 @@ export const getHomepageStats = unstable_cache(
         totalViews: totalViews._sum.views ?? 0,
         totalCities: citiesRaw.length,
       };
-    } catch (err) {
-      console.error("[Perf Audit] Error in getHomepageStats:", err);
+    } catch (err: any) {
+      console.warn("[Perf Audit] Database query skipped in getHomepageStats:", err?.message || err);
       return { totalProperties: 0, totalUsers: 0, totalViews: 0, totalCities: 0 };
     }
   },

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Users, Building2, Eye, Trash2, CheckCircle2, XCircle, Search, 
+import {
+  Users, Building2, Eye, Trash2, CheckCircle2, XCircle, Search,
   ShieldAlert, RefreshCw, Layers, Sparkles, ShieldCheck,
   TrendingUp, Activity, ShieldAlert as AlertIcon,
   CheckCircle, AlertTriangle, X, SlidersHorizontal, Loader2
@@ -66,7 +66,7 @@ export default function AdminDashboardClient() {
   const [users, setUsers] = useState<User[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  
+
   // Search and Loading states
   const [userQuery, setUserQuery] = useState("");
   const [propertyQuery, setPropertyQuery] = useState("");
@@ -95,7 +95,7 @@ export default function AdminDashboardClient() {
     isOpen: false,
     title: "",
     message: "",
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
@@ -250,13 +250,13 @@ export default function AdminDashboardClient() {
       });
       if (res.ok) {
         // Update local state arrays
-        const updatedProps = properties.map((p) => 
+        const updatedProps = properties.map((p) =>
           p.id === propertyId ? { ...p, isApproved: !currentApproval } : p
         );
         setProperties(updatedProps);
-        
+
         if (stats) {
-          const updatedRecents = stats.recentProperties.map((p) => 
+          const updatedRecents = stats.recentProperties.map((p) =>
             p.id === propertyId ? { ...p, isApproved: !currentApproval } : p
           );
           setStats({ ...stats, recentProperties: updatedRecents });
@@ -370,7 +370,7 @@ export default function AdminDashboardClient() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      
+
       {/* Toast Alerts Portal */}
       <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full">
         <AnimatePresence>
@@ -380,20 +380,19 @@ export default function AdminDashboardClient() {
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className={`p-4 rounded-xl shadow-xl flex items-center justify-between border ${
-                toast.type === "success" 
-                  ? "bg-green-500/10 border-green-500/20 text-green-400" 
-                  : toast.type === "error"
+              className={`p-4 rounded-xl shadow-xl flex items-center justify-between border ${toast.type === "success"
+                ? "bg-green-500/10 border-green-500/20 text-green-400"
+                : toast.type === "error"
                   ? "bg-red-500/10 border-red-500/20 text-red-400"
                   : "bg-blue-500/10 border-blue-500/20 text-blue-400"
-              }`}
+                }`}
             >
               <div className="flex items-center gap-2">
                 {toast.type === "success" && <CheckCircle className="h-5 w-5" />}
                 {toast.type === "error" && <AlertTriangle className="h-5 w-5" />}
                 <p className="text-sm font-semibold">{toast.message}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
                 className="text-muted-foreground hover:text-foreground ml-4"
               >
@@ -408,7 +407,7 @@ export default function AdminDashboardClient() {
       <AnimatePresence>
         {confirmModal.isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -439,9 +438,8 @@ export default function AdminDashboardClient() {
                 </button>
                 <button
                   onClick={confirmModal.onConfirm}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all shadow-md ${
-                    confirmModal.danger ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary/90'
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all shadow-md ${confirmModal.danger ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary/90'
+                    }`}
                 >
                   Confirm
                 </button>
@@ -450,7 +448,7 @@ export default function AdminDashboardClient() {
           </div>
         )}
       </AnimatePresence>
-      
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-border pb-8 mb-8 text-left">
         <div>
@@ -465,8 +463,8 @@ export default function AdminDashboardClient() {
             Overview statistics, catalog moderation, user roles, and full administrative overrides.
           </p>
         </div>
-        
-        <button 
+
+        <button
           onClick={() => { fetchStats(); fetchUsers(); fetchProperties(); fetchCategories(); showToast("Dashboard data reloaded"); }}
           className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent/80 text-foreground font-semibold border border-border rounded-xl text-xs transition-all self-start sm:self-center hover-lift shadow-sm"
         >
@@ -477,10 +475,10 @@ export default function AdminDashboardClient() {
       {/* Modern Tabs Menu */}
       <div className="flex border-b border-border gap-0 mb-8 overflow-x-auto pb-px">
         {[
-          { id: "overview",    label: "Overview",    icon: Layers          },
-          { id: "properties", label: "Properties",   icon: Building2       },
-          { id: "users",      label: "Users",        icon: Users            },
-          { id: "categories", label: "Categories",   icon: SlidersHorizontal },
+          { id: "overview", label: "Overview", icon: Layers },
+          { id: "properties", label: "Properties", icon: Building2 },
+          { id: "users", label: "Users", icon: Users },
+          { id: "categories", label: "Categories", icon: SlidersHorizontal },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -492,11 +490,10 @@ export default function AdminDashboardClient() {
                 if (tab.id === "properties") fetchProperties();
                 if (tab.id === "users") fetchUsers();
               }}
-              className={`flex items-center gap-1.5 px-4 py-3 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 ${
-                activeTab === tab.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex items-center gap-1.5 px-4 py-3 border-b-2 font-bold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 ${activeTab === tab.id
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
             >
               <Icon className="h-4 w-4" />
               {tab.label}
@@ -507,13 +504,13 @@ export default function AdminDashboardClient() {
 
       {/* Content Panels */}
       <div>
-        
+
         {/* ──────── TAB: OVERVIEW ──────── */}
         {activeTab === "overview" && (
           <div className="flex flex-col gap-8">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
+
               {/* Total Users */}
               <div className="bg-card border border-border p-6 rounded-2xl flex items-center justify-between shadow-md relative overflow-hidden group hover:border-primary/30 transition-all duration-300">
                 <div className="text-left relative z-10">
@@ -623,9 +620,8 @@ export default function AdminDashboardClient() {
                           <td className="px-6 py-4 text-muted-foreground">{p.area}, {p.city}</td>
                           <td className="px-6 py-4 text-primary font-bold">{formatPKR(p.price)}</td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                              p.isApproved ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
-                            }`}>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${p.isApproved ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
+                              }`}>
                               {p.isApproved ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                               {p.isApproved ? "Approved" : "Rejected"}
                             </span>
@@ -635,11 +631,10 @@ export default function AdminDashboardClient() {
                               <button
                                 onClick={() => handleToggleApproval(p.id, p.isApproved)}
                                 disabled={actioningId === p.id}
-                                className={`px-3 py-1 rounded-lg border text-xs font-bold transition-all shadow-sm ${
-                                  p.isApproved
-                                    ? "border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white"
-                                    : "border-green-500/30 text-green-500 hover:bg-green-500 hover:text-white"
-                                }`}
+                                className={`px-3 py-1 rounded-lg border text-xs font-bold transition-all shadow-sm ${p.isApproved
+                                  ? "border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white"
+                                  : "border-green-500/30 text-green-500 hover:bg-green-500 hover:text-white"
+                                  }`}
                               >
                                 {p.isApproved ? "Reject" : "Approve"}
                               </button>
@@ -725,9 +720,8 @@ export default function AdminDashboardClient() {
                             </span>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                              p.isApproved ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
-                            }`}>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${p.isApproved ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
+                              }`}>
                               {p.isApproved ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                               {p.isApproved ? "Approved" : "Rejected"}
                             </span>
@@ -737,11 +731,10 @@ export default function AdminDashboardClient() {
                               <button
                                 onClick={() => handleToggleApproval(p.id, p.isApproved)}
                                 disabled={actioningId === p.id}
-                                className={`px-3 py-1 rounded-lg border text-xs font-bold transition-all shadow-sm ${
-                                  p.isApproved
-                                    ? "border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white"
-                                    : "border-green-500/30 text-green-500 hover:bg-green-500 hover:text-white"
-                                }`}
+                                className={`px-3 py-1 rounded-lg border text-xs font-bold transition-all shadow-sm ${p.isApproved
+                                  ? "border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white"
+                                  : "border-green-500/30 text-green-500 hover:bg-green-500 hover:text-white"
+                                  }`}
                               >
                                 {p.isApproved ? "Reject" : "Approve"}
                               </button>
@@ -833,13 +826,12 @@ export default function AdminDashboardClient() {
                           </div>
                         </div>
 
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${
-                          u.role === 'ADMIN' 
-                            ? 'bg-red-500/10 border-red-500/20 text-red-500' 
-                            : u.role === 'AGENT'
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${u.role === 'ADMIN'
+                          ? 'bg-red-500/10 border-red-500/20 text-red-500'
+                          : u.role === 'AGENT'
                             ? 'bg-primary/10 border-primary/20 text-primary'
                             : 'bg-accent border-border text-muted-foreground'
-                        }`}>
+                          }`}>
                           {u.role}
                         </span>
                       </div>
@@ -952,7 +944,7 @@ export default function AdminDashboardClient() {
             {/* Inline edit overlay modal */}
             {editingCategory && (
               <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-xl overflow-hidden"
@@ -963,8 +955,8 @@ export default function AdminDashboardClient() {
                         <h3 className="text-lg font-extrabold text-foreground">
                           Modify {editingCategory.name.charAt(0) + editingCategory.name.slice(1).toLowerCase()} Category
                         </h3>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => setEditingCategory(null)}
                           className="p-1.5 rounded-lg border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-all"
                         >

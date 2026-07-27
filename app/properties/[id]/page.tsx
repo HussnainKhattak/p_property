@@ -262,6 +262,23 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
                 <span className="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-accent text-foreground">
                   {property.propertyType}
                 </span>
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider ${
+                  property.status === "AVAILABLE"
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                    : property.status === "BOOKED"
+                      ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
+                      : property.status === "SOLD"
+                        ? "bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20"
+                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                }`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${
+                    property.status === "AVAILABLE" ? "bg-emerald-500 animate-pulse" :
+                    property.status === "BOOKED" ? "bg-red-500" :
+                    property.status === "SOLD" ? "bg-orange-500" :
+                    "bg-amber-500"
+                  }`} />
+                  {property.status}
+                </span>
               </div>
               
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-foreground leading-tight">
@@ -383,23 +400,23 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
               
               <div className="relative flex flex-col items-center gap-3">
                 <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold ring-4 ring-primary/20 overflow-hidden">
-                  {property.owner.profileImage || property.owner.image ? (
+                  {property.owner?.profileImage || property.owner?.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={property.owner.profileImage || property.owner.image || ""}
-                      alt={property.owner.name || "Owner"}
+                      src={property.owner?.profileImage || property.owner?.image || ""}
+                      alt={property.owner?.name || "Owner"}
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    property.owner.name?.[0]?.toUpperCase() || "O"
+                    property.owner?.name?.[0]?.toUpperCase() || "O"
                   )}
                 </div>
                 <div>
                   <h4 className="font-bold text-base text-foreground">
-                    {property.owner.name || "Peshawar Property Seller"}
+                    {property.owner?.name || "Peshawar Property Seller"}
                   </h4>
                   <span className="inline-block mt-0.5 text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-primary/20 text-primary">
-                    {property.owner.role}
+                    {(property.owner as any)?.role ?? "SELLER"}
                   </span>
                 </div>
               </div>
@@ -416,12 +433,13 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
 
               {/* Interaction Buttons client component */}
               <PropertySidebarActions
-                ownerPhone={property.owner.phone}
+                ownerPhone={(property.owner as any)?.phone ?? null}
                 propertyTitle={property.title}
               />
             </div>
           </div>
         </div>
+
 
         {/* Bottom Related Properties Row */}
         {relatedProperties.length > 0 && (

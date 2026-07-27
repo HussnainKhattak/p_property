@@ -23,8 +23,9 @@ export default async function EditPropertyPage({ params }: EditPropertyPageProps
 
   if (!property) redirect("/dashboard");
 
-  // Authorize: Only the owner can edit their own listing
-  if (property.ownerId !== session.user.id) redirect("/dashboard");
+  // Authorize: Only the owner or an admin can edit this listing
+  const isAdmin = session.user.role === "ADMIN";
+  if (property.ownerId !== session.user.id && !isAdmin) redirect("/dashboard");
 
   const serializedProperty = {
     id:           property.id,

@@ -6,7 +6,9 @@ import { Bed, Bath, Maximize, MapPin, Building, Eye, Heart } from "lucide-react"
 import { useSession } from "next-auth/react";
 import SavePropertyButton from "./SavePropertyButton";
 import LazyImage from "@/components/ui/LazyImage";
-
+import DashboardActions from "../dashboard/DashboardActions";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 export interface Property {
   id: string;
   title: string;
@@ -21,13 +23,13 @@ export interface Property {
   bedrooms: number;
   bathrooms: number;
   marla: number;
-  status: "AVAILABLE" | "SOLD" | "RENTED";
+  status: "AVAILABLE" | "SOLD" | "RENTED" | "BOOKED";
   imageUrls: string[];
   videoUrl: string | null;
   views?: number;
   favoritesCount?: number;
   createdAt?: Date | string;
-  ownerId?: string;
+  ownerId?: string | null;
   owner?: {
     name: string | null;
     profileImage: string | null;
@@ -51,6 +53,21 @@ const formatArea = (marlas: number) => {
 export default function PropertyCard({ property, index = 0 }: PropertyCardProps) {
   const { data: session } = useSession();
   const isOwner = !!(session?.user?.id && property.ownerId && session.user.id === property.ownerId);
+
+  const router = useRouter();
+  const [localStatus, setLocalStatus] = useState(property.status);
+
+  // Called by DashboardActions AFTER it has already successfully updated the DB.
+  // We just apply the optimistic UI update and refresh SSR caches.
+  const handleStatusChange = (propertyId: string, newStatus: string) => {
+    setLocalStatus(newStatus as Property["status"]);
+    router.refresh(); // re-fetches server pages so home & /properties reflect the change
+  };
+
+  // Called by DashboardActions AFTER it has already successfully deleted from DB.
+  const handleDelete = (propertyId: string) => {
+    router.refresh();
+  };
 
   const mainImage =
     property.imageUrls?.[0] ||
@@ -100,15 +117,37 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
         <div className="absolute top-3 right-3 z-20">
           <SavePropertyButton propertyId={property.id} />
         </div>
-
-        {/* Status badge (if not AVAILABLE) */}
-        {property.status !== "AVAILABLE" && (
-          <div className="absolute bottom-3 left-3">
-            <span className="px-2.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-red-600 text-white shadow">
-              {property.status}
-            </span>
+        {isOwner && (
+          <div className="absolute bottom-3 right-3 z-20">
+            <DashboardActions
+              propertyId={property.id}
+              status={localStatus}
+              onStatusChange={handleStatusChange}
+              onDelete={handleDelete}
+            />
           </div>
         )}
+
+        {/* Status badge */}
+        <div className="absolute bottom-3 left-3">
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] uppercase font-bold tracking-wider backdrop-blur-md shadow-sm border ${
+            localStatus === "AVAILABLE"
+              ? "bg-emerald-500/20 text-emerald-100 border-emerald-400/30"
+              : localStatus === "BOOKED"
+                ? "bg-red-500/20 text-red-100 border-red-400/30"
+                : localStatus === "SOLD"
+                  ? "bg-orange-500/20 text-orange-100 border-orange-400/30"
+                  : "bg-amber-500/20 text-amber-100 border-amber-400/30"
+          }`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${
+              localStatus === "AVAILABLE" ? "bg-emerald-400 animate-pulse" :
+              localStatus === "BOOKED" ? "bg-red-400" :
+              localStatus === "SOLD" ? "bg-orange-400" :
+              "bg-amber-400"
+            }`} />
+            {localStatus}
+          </span>
+        </div>
       </div>
 
       {/* Content */}

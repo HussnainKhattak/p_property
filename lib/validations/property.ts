@@ -21,7 +21,9 @@ export const propertySchema = z.object({
   status: PropertyStatusEnum.default("AVAILABLE"),
   imageUrls: z.array(z.string().url("Invalid image URL")).min(1, "At least one image is required"),
   videoUrl: z.union([z.string().url("Invalid video URL"), z.literal(""), z.null()]).optional(),
+  apartmentName: z.string().optional(),
 });
+
 
 export const bookingSchema = z.object({
   visitDate: z.coerce.date().refine((date) => date > new Date(), {

@@ -31,9 +31,9 @@ export async function POST(req: Request) {
     // Derive clean subcategory: for non-plot types use the propertyType as subcategory base
     // so we always store a meaningful value and never mix it with listingType
     const cleanSubcategory =
-      ["SHOP", "APARTMENT", "HOUSE"].includes(parsed.data.propertyType)
-        ? parsed.data.propertyType  // e.g. "SHOP", "APARTMENT", "HOUSE"
-        : parsed.data.subcategory;  // "RESIDENTIAL" or "COMMERCIAL" for plots
+      parsed.data.subcategory && parsed.data.subcategory.trim() !== ""
+        ? parsed.data.subcategory.trim()
+        : parsed.data.propertyType;
 
     let property;
     try {

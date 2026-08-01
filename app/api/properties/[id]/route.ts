@@ -105,7 +105,7 @@ export async function PATCH(
         area:         parsed.data.area,
         address:      parsed.data.address,
         propertyType: parsed.data.propertyType,
-        subcategory:  parsed.data.subcategory,
+        subcategory:  parsed.data.subcategory || parsed.data.propertyType,
         listingType:  parsed.data.listingType,
         bedrooms:     parsed.data.bedrooms,
         bathrooms:    parsed.data.bathrooms,

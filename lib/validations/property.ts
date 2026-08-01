@@ -21,7 +21,7 @@ export const propertySchema = z.object({
   area: z.string().min(3, "Area location is required"),
   marla: z.coerce.number().positive("Area size in marla must be a positive number"),
   propertyType: PropertyTypeEnum,
-  subcategory: z.string().min(1, "Subcategory selection is required"),
+  subcategory: z.string().optional().default(""),
   listingType: ListingTypeEnum,
   bedrooms: z.coerce.number().int().nonnegative().default(0),
   bathrooms: z.coerce.number().int().nonnegative().default(0),

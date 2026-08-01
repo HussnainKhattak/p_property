@@ -278,7 +278,7 @@ export default function AddPropertyPage() {
       // subcategory stored in DB:
       // Plots   → "RESIDENTIAL" or "COMMERCIAL"
       // Others  → "SALE" or "RENT" (mirrors listingType for filtering/display)
-      const finalSubcategory = form.subcategory;
+      const finalSubcategory = form.subcategory || selectedType;
 
       const payload: Record<string, unknown> = {
         title:        form.title,

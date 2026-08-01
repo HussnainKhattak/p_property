@@ -33,7 +33,7 @@ function createPrismaClient(): PrismaClient {
 // Reuse cached instance in development and production serverless environments
 const db: PrismaClient = globalWithPrisma._prismaClient ?? createPrismaClient();
 
-if (!globalWithPrisma._prismaClient) {
+if (process.env.NODE_ENV !== "production") {
   globalWithPrisma._prismaClient = db;
 }
 

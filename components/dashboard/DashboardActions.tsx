@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+import { createPortal } from "react-dom";
 
 interface DashboardActionsProps {
   propertyId: string;
@@ -21,6 +22,11 @@ interface DashboardActionsProps {
 interface MenuCoords {
   top: number;
   right: number;
+}
+
+// ─── DEBUG LOGGER ──────────────────────────────────────────────────────────────
+function dbg(step: string, data?: unknown) {
+  console.log(`[DashboardActions] ${step}`, data ?? "");
 }
 
 export default function DashboardActions({
@@ -36,6 +42,7 @@ export default function DashboardActions({
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Open menu: calculate fixed position from button rect so it escapes any overflow container
   const openMenu = useCallback(() => {
@@ -48,35 +55,59 @@ export default function DashboardActions({
     setMenuOpen(true);
   }, []);
 
-  // Close on outside click or scroll
+  // Close on outside click or scroll.
+  // IMPORTANT: We check if the click target is OUTSIDE both the button and the
+  // menu panel before closing. This prevents the document mousedown from firing
+  // before the menu item's onClick handler runs (React 18 root-level event issue).
   useEffect(() => {
     if (!menuOpen) return;
-    const close = () => setMenuOpen(false);
-    document.addEventListener("mousedown", close);
-    window.addEventListener("scroll", close, true);
+    const handleOutsideMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const clickedInsideButton = buttonRef.current?.contains(target);
+      const clickedInsideMenu   = menuRef.current?.contains(target);
+      if (!clickedInsideButton && !clickedInsideMenu) {
+        dbg("Menu closed (outside click)");
+        setMenuOpen(false);
+      }
+    };
+    const handleScroll = () => {
+      dbg("Menu closed (scroll)");
+      setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutsideMouseDown);
+    window.addEventListener("scroll", handleScroll, true);
     return () => {
-      document.removeEventListener("mousedown", close);
-      window.removeEventListener("scroll", close, true);
+      document.removeEventListener("mousedown", handleOutsideMouseDown);
+      window.removeEventListener("scroll", handleScroll, true);
     };
   }, [menuOpen]);
 
   const handleStatusChange = async (newStatus: string) => {
+    dbg("Button clicked: Mark as", newStatus);
     setIsUpdatingStatus(true);
     setMenuOpen(false);
     try {
-      const res = await fetch(`/api/properties/${propertyId}/status`, {
+      const url = `/api/properties/${propertyId}/status`;
+      dbg("API called", url);
+      const res = await fetch(url, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
+      dbg("Response received", { status: res.status, ok: res.ok });
 
       if (res.ok) {
+        const data = await res.json();
+        dbg("DB updated — new status", data?.property?.status);
         onStatusChange?.(propertyId, newStatus);
+        dbg("UI callback fired");
       } else {
         const data = await res.json();
+        console.error("[DashboardActions] Status update failed:", data);
         alert(data.error || "Failed to update status.");
       }
-    } catch {
+    } catch (err) {
+      console.error("[DashboardActions] Network error on status update:", err);
       alert("Network error. Please try again.");
     } finally {
       setIsUpdatingStatus(false);
@@ -84,19 +115,28 @@ export default function DashboardActions({
   };
 
   const handleDelete = async () => {
+    dbg("Button clicked: Delete confirmed for", propertyId);
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/properties/${propertyId}`, {
+      const url = `/api/properties/${propertyId}`;
+      dbg("API called", url);
+      const res = await fetch(url, {
         method: "DELETE",
       });
+      dbg("Response received", { status: res.status, ok: res.ok });
 
       if (res.ok) {
+        const data = await res.json();
+        dbg("DB deleted — response", data);
         onDelete?.(propertyId);
+        dbg("UI callback fired");
       } else {
         const data = await res.json();
+        console.error("[DashboardActions] Delete failed:", data);
         alert(data.error || "Failed to delete property.");
       }
-    } catch {
+    } catch (err) {
+      console.error("[DashboardActions] Network error on delete:", err);
       alert("Network error. Please try again.");
     } finally {
       setIsDeleting(false);
@@ -125,10 +165,11 @@ export default function DashboardActions({
         )}
       </button>
 
-      {/* Floating dropdown — rendered via fixed positioning, escapes overflow containers */}
-      {menuOpen && (
+      {/* Floating dropdown — rendered into document.body portal so it escapes
+          any overflow:hidden ancestor and sits above all other content.       */}
+      {menuOpen && typeof document !== "undefined" && createPortal(
         <div
-          onMouseDown={(e) => e.stopPropagation()}
+          ref={menuRef}
           style={{
             position: "fixed",
             top: menuCoords.top,
@@ -147,6 +188,7 @@ export default function DashboardActions({
           {/* Edit Property */}
           <button
             onClick={() => {
+              dbg("Button clicked: Edit Property", propertyId);
               setMenuOpen(false);
               router.push(`/properties/edit/${propertyId}`);
             }}
@@ -185,6 +227,7 @@ export default function DashboardActions({
           {/* Delete Property */}
           <button
             onClick={() => {
+              dbg("Button clicked: Delete Property", propertyId);
               setMenuOpen(false);
               setShowConfirm(true);
             }}
@@ -193,7 +236,8 @@ export default function DashboardActions({
             <Trash2 className="h-4 w-4 flex-shrink-0" />
             Delete Property
           </button>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete Confirmation Modal */}

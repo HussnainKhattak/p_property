@@ -134,17 +134,22 @@ export async function DELETE(
 ) {
   try {
     const { id: propertyId } = await params;
+    console.log(`[API DELETE] Request received for property: ${propertyId}`);
+
     const session = await auth();
 
     if (!session?.user?.id) {
+      console.log(`[API DELETE] Unauthorized - no session`);
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     if (!isValidObjectId(propertyId)) {
+      console.log(`[API DELETE] Invalid property ID: ${propertyId}`);
       return NextResponse.json({ error: "Invalid property ID" }, { status: 400 });
     }
 
     const property = await db.property.findUnique({ where: { id: propertyId } });
+    console.log(`[API DELETE] Property found:`, property ? "yes" : "no");
 
     if (!property) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
@@ -153,6 +158,7 @@ export async function DELETE(
     // Allow property owner OR admin
     const isOwner = property.ownerId === session.user.id;
     const isAdmin = session.user.role === "ADMIN";
+    console.log(`[API DELETE] Ownership check - isOwner: ${isOwner}, isAdmin: ${isAdmin}`);
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json(
@@ -162,9 +168,11 @@ export async function DELETE(
     }
 
     await db.property.delete({ where: { id: propertyId } });
+    console.log(`[API DELETE] Property deleted from DB successfully`);
 
     revalidatePropertyCaches();
 
+    console.log(`[API DELETE] Response returned: success`);
     return NextResponse.json({ message: "Property deleted successfully" });
   } catch (err: unknown) {
     const error = err as Error;

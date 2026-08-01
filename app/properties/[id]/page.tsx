@@ -18,7 +18,7 @@ import {
 import PropertyCard, { Property } from "@/components/property/PropertyCard";
 import PropertySidebarActions from "@/components/property/PropertySidebarActions";
 
-import { isValidObjectId, formatPKR } from "@/lib/utils";
+import { isValidObjectId, formatPKR, normalizePropertyType } from "@/lib/utils";
 
 import RecentlyViewedTracker from "@/components/property/RecentlyViewedTracker";
 
@@ -91,8 +91,12 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
     redirect("/properties");
   }
 
-  // Validate ObjectId for MongoDB. Redirect to search page on invalid IDs
+  // Validate ObjectId for MongoDB. If it's a category slug (e.g. apartments, houses, shops, plots), redirect to category search page
   if (!propertyId || !isValidObjectId(propertyId)) {
+    const catType = normalizePropertyType(propertyId);
+    if (catType) {
+      redirect(`/properties?propertyType=${catType}`);
+    }
     console.warn("Invalid ObjectId provided to property details route, redirecting:", propertyId);
     redirect("/properties");
   }
@@ -383,7 +387,7 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
                     src={property.videoUrl}
                     controls
                     className="w-full h-full object-contain"
-                    preload="metadata"
+                    preload="none"
                   />
                 </div>
               </div>

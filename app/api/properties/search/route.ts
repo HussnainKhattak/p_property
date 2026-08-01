@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { Prisma, PropertyType, ListingType } from "@prisma/client";
+import { Prisma, ListingType } from "@prisma/client";
+import { normalizePropertyType } from "@/lib/utils";
 
 export async function GET(req: Request) {
   try {
@@ -13,8 +14,17 @@ export async function GET(req: Request) {
     const maxPrice  = searchParams.get("maxPrice")           || "";
     const minMarla  = searchParams.get("minMarla")           || "";
     const maxMarla  = searchParams.get("maxMarla")           || "";
-    const propType    = searchParams.get("propertyType")       || "";
-    const listType    = searchParams.get("listingType")        || "";
+    const rawPropType = searchParams.get("propertyType")       || "";
+    const propType    = normalizePropertyType(rawPropType);
+    const rawListType = searchParams.get("listingType")        || "";
+    const normalizedListType = rawListType
+      ? rawListType.toUpperCase() === "BUY" || rawListType.toUpperCase() === "SALE"
+        ? "SALE"
+        : rawListType.toUpperCase() === "RENT"
+        ? "RENT"
+        : undefined
+      : undefined;
+
     const subcategory = searchParams.get("subcategory")        || "";
     const bedrooms    = searchParams.get("bedrooms")           || "";
     const bathrooms   = searchParams.get("bathrooms")          || "";
@@ -31,20 +41,30 @@ export async function GET(req: Request) {
                 { title:       { contains: query, mode: "insensitive" } },
                 { description: { contains: query, mode: "insensitive" } },
                 { area:        { contains: query, mode: "insensitive" } },
+                { address:     { contains: query, mode: "insensitive" } },
+                { city:        { contains: query, mode: "insensitive" } },
               ],
             }
           : {},
-        city        ? { city: { contains: city, mode: "insensitive" } }  : {},
-        area        ? { area: { contains: area, mode: "insensitive" } }  : {},
-        propType    ? { propertyType: propType as PropertyType }          : {},
-        listType    ? { listingType:  listType as ListingType  }          : {},
-        subcategory ? { subcategory:  subcategory }                       : {},
-        minPrice    ? { price: { gte: parseFloat(minPrice) } }           : {},
-        maxPrice    ? { price: { lte: parseFloat(maxPrice) } }           : {},
-        minMarla    ? { marla: { gte: parseFloat(minMarla) } }           : {},
-        maxMarla    ? { marla: { lte: parseFloat(maxMarla) } }           : {},
-        bedrooms    ? { bedrooms:  { gte: parseInt(bedrooms)  } }       : {},
-        bathrooms   ? { bathrooms: { gte: parseInt(bathrooms) } }       : {},
+        city ? { city: { contains: city, mode: "insensitive" } } : {},
+        area
+          ? {
+              OR: [
+                { area:    { contains: area, mode: "insensitive" } },
+                { address: { contains: area, mode: "insensitive" } },
+                { city:    { contains: area, mode: "insensitive" } },
+              ],
+            }
+          : {},
+        propType           ? { propertyType: propType }                      : {},
+        normalizedListType ? { listingType:  normalizedListType as ListingType } : {},
+        subcategory        ? { subcategory:  subcategory }                    : {},
+        minPrice           ? { price: { gte: parseFloat(minPrice) } }        : {},
+        maxPrice           ? { price: { lte: parseFloat(maxPrice) } }        : {},
+        minMarla           ? { marla: { gte: parseFloat(minMarla) } }        : {},
+        maxMarla           ? { marla: { lte: parseFloat(maxMarla) } }        : {},
+        bedrooms           ? { bedrooms:  { gte: parseInt(bedrooms)  } }    : {},
+        bathrooms          ? { bathrooms: { gte: parseInt(bathrooms) } }    : {},
       ],
     };
 

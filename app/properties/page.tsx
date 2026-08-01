@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import PropertiesClient from "@/components/property/PropertiesClient";
 import { Loader2 } from "lucide-react";
+import { normalizePropertyType } from "@/lib/utils";
 
 interface PropertiesPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -18,14 +19,22 @@ async function getInitialProperties(sp: Record<string, string | string[] | undef
   const maxPrice    = get("maxPrice");
   const minMarla    = get("minMarla");
   const maxMarla    = get("maxMarla");
-  const propType    = get("propertyType");
-  const listType    = get("listingType");
-  const subcategory = get("subcategory");
-  const bedrooms    = get("bedrooms");
-  const bathrooms   = get("bathrooms");
-  const sortBy      = get("sortBy") || "newest";
-  const page        = parseInt(get("page") || "1");
-  const limit       = 12;
+  const rawPropType  = get("propertyType");
+  const propType     = normalizePropertyType(rawPropType);
+  const rawListType  = get("listingType");
+  const normalizedListType = rawListType
+    ? rawListType.toUpperCase() === "BUY" || rawListType.toUpperCase() === "SALE"
+      ? "SALE"
+      : rawListType.toUpperCase() === "RENT"
+      ? "RENT"
+      : undefined
+    : undefined;
+  const subcategory  = get("subcategory");
+  const bedrooms     = get("bedrooms");
+  const bathrooms    = get("bathrooms");
+  const sortBy       = get("sortBy") || "newest";
+  const page         = parseInt(get("page") || "1");
+  const limit        = 12;
 
   const where: Prisma.PropertyWhereInput = {
     AND: [
@@ -35,20 +44,30 @@ async function getInitialProperties(sp: Record<string, string | string[] | undef
               { title:       { contains: query, mode: "insensitive" } },
               { description: { contains: query, mode: "insensitive" } },
               { area:        { contains: query, mode: "insensitive" } },
+              { address:     { contains: query, mode: "insensitive" } },
+              { city:        { contains: query, mode: "insensitive" } },
             ],
           }
         : {},
-      city        ? { city: { contains: city, mode: "insensitive" } }                             : {},
-      area        ? { area: { contains: area, mode: "insensitive" } }                             : {},
-      propType    ? { propertyType: propType as Prisma.EnumPropertyTypeFilter["equals"] }         : {},
-      listType    ? { listingType:  listType as Prisma.EnumListingTypeFilter["equals"]  }         : {},
-      subcategory ? { subcategory:  subcategory }                                                 : {},
-      minPrice    ? { price: { gte: parseFloat(minPrice) } }                                      : {},
-      maxPrice    ? { price: { lte: parseFloat(maxPrice) } }                                      : {},
-      minMarla    ? { marla: { gte: parseFloat(minMarla) } }                                      : {},
-      maxMarla    ? { marla: { lte: parseFloat(maxMarla) } }                                      : {},
-      bedrooms    ? { bedrooms:  { gte: parseInt(bedrooms)  } }                                  : {},
-      bathrooms   ? { bathrooms: { gte: parseInt(bathrooms) } }                                  : {},
+      city ? { city: { contains: city, mode: "insensitive" } } : {},
+      area
+        ? {
+            OR: [
+              { area:    { contains: area, mode: "insensitive" } },
+              { address: { contains: area, mode: "insensitive" } },
+              { city:    { contains: area, mode: "insensitive" } },
+            ],
+          }
+        : {},
+      propType           ? { propertyType: propType }                                          : {},
+      normalizedListType ? { listingType:  normalizedListType as Prisma.EnumListingTypeFilter["equals"] } : {},
+      subcategory        ? { subcategory:  subcategory }                                       : {},
+      minPrice           ? { price: { gte: parseFloat(minPrice) } }                            : {},
+      maxPrice           ? { price: { lte: parseFloat(maxPrice) } }                            : {},
+      minMarla           ? { marla: { gte: parseFloat(minMarla) } }                            : {},
+      maxMarla           ? { marla: { lte: parseFloat(maxMarla) } }                            : {},
+      bedrooms           ? { bedrooms:  { gte: parseInt(bedrooms)  } }                        : {},
+      bathrooms          ? { bathrooms: { gte: parseInt(bathrooms) } }                        : {},
     ],
   };
 

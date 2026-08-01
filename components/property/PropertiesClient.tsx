@@ -9,6 +9,8 @@ import PropertySearchFilters, {
 import PropertySearchResults from "./PropertySearchResults";
 import { Property } from "./PropertyCard";
 
+import { normalizePropertyType } from "@/lib/utils";
+
 interface SearchData {
   properties: Property[];
   totalCount: number;
@@ -22,6 +24,8 @@ interface PropertiesClientProps {
 
 /** Parse URL search params into filter object */
 function paramsToFilters(sp: URLSearchParams): SearchFilters {
+  const rawPropType = sp.get("propertyType") || "";
+  const propType = normalizePropertyType(rawPropType) || rawPropType;
   return {
     query:        sp.get("query")        || "",
     city:         sp.get("city")         || "",
@@ -30,7 +34,7 @@ function paramsToFilters(sp: URLSearchParams): SearchFilters {
     maxPrice:     sp.get("maxPrice")     || "",
     minMarla:     sp.get("minMarla")     || "",
     maxMarla:     sp.get("maxMarla")     || "",
-    propertyType: sp.get("propertyType") || "",
+    propertyType: propType,
     subcategory:  sp.get("subcategory")  || "",
     listingType:  sp.get("listingType")  || "",
     bedrooms:     sp.get("bedrooms")     || "",

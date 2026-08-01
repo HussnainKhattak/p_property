@@ -69,9 +69,12 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
     router.refresh();
   };
 
-  const mainImage =
-    property.imageUrls?.[0] ||
-    "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600&q=80";
+  const rawImage = property.imageUrls?.[0];
+  const mainImage = rawImage
+    ? rawImage.includes("res.cloudinary.com") && !rawImage.includes("w_600")
+      ? rawImage.replace("/upload/", "/upload/w_600,c_scale,q_auto,f_auto/")
+      : rawImage
+    : "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600&q=80";
 
   return (
     <motion.div

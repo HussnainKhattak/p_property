@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/components/providers";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,16 +19,46 @@ import {
   Home as HomeIcon,
   Info,
   PhoneCall,
+  LayoutGrid,
+  Store,
+  Map,
 } from "lucide-react";
 
 export default function Navbar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const { theme, toggleTheme } = useTheme();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [propertiesDropdownOpen, setPropertiesDropdownOpen] = useState(false);
+  const [mobilePropertiesOpen, setMobilePropertiesOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  const [categoryCounts, setCategoryCounts] = useState<{
+    ALL?: number;
+    APARTMENT?: number;
+    HOUSE?: number;
+    SHOP?: number;
+    PLOT?: number;
+  }>({});
+
+  const fetchCategoryCounts = async () => {
+    try {
+      const res = await fetch("/api/properties/counts");
+      if (res.ok) {
+        const data = await res.json();
+        setCategoryCounts(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch property counts:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategoryCounts();
+  }, [pathname]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -39,11 +69,48 @@ export default function Navbar() {
   useEffect(() => {
     setIsOpen(false);
     setIsDropdownOpen(false);
+    setPropertiesDropdownOpen(false);
   }, [pathname]);
 
-  const navLinks = [
-    { name: "Home", href: "/", icon: HomeIcon },
-    { name: "Properties", href: "/properties", icon: Building2 },
+  const propertyCategories = [
+    {
+      name: "All Properties",
+      href: "/properties",
+      key: "ALL",
+      icon: LayoutGrid,
+      description: "Browse complete property directory",
+    },
+    {
+      name: "Apartments",
+      href: "/properties?propertyType=APARTMENT",
+      key: "APARTMENT",
+      icon: Building2,
+      description: "Flats, studio suites & executive apartments",
+    },
+    {
+      name: "Houses",
+      href: "/properties?propertyType=HOUSE",
+      key: "HOUSE",
+      icon: HomeIcon,
+      description: "Single family homes, villas & double units",
+    },
+    {
+      name: "Shops",
+      href: "/properties?propertyType=SHOP",
+      key: "SHOP",
+      icon: Store,
+      description: "Commercial plazas, showrooms & retail spots",
+    },
+    {
+      name: "Plots",
+      href: "/properties?propertyType=PLOT",
+      key: "PLOT",
+      icon: Map,
+      description: "Residential & commercial land plot files",
+    },
+  ];
+
+  const otherNavLinks = [
     { name: "Add Property", href: "/properties/add", icon: Plus, requiresAuth: true },
     { name: "About", href: "/about", icon: Info },
     { name: "Contact", href: "/contact", icon: PhoneCall },
@@ -72,17 +139,136 @@ export default function Navbar() {
 
           {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center space-x-6">
-            {navLinks.map((link) => {
+            <Link
+              href="/"
+              className={`text-sm font-medium transition-colors relative py-2 ${
+                pathname === "/"
+                  ? "text-primary font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Home
+              {pathname === "/" && (
+                <motion.span
+                  layoutId="activeNavUnderline"
+                  className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+            </Link>
+
+            {/* Properties Dropdown */}
+            <div
+              className="relative"
+              onMouseEnter={() => setPropertiesDropdownOpen(true)}
+              onMouseLeave={() => setPropertiesDropdownOpen(false)}
+            >
+              <button
+                onClick={() => setPropertiesDropdownOpen((p) => !p)}
+                className={`flex items-center gap-1.5 text-sm font-medium transition-colors relative py-2 ${
+                  pathname.startsWith("/properties") && pathname !== "/properties/add"
+                    ? "text-primary font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <span>Properties</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-200 ${
+                    propertiesDropdownOpen ? "rotate-180 text-primary" : "text-muted-foreground"
+                  }`}
+                />
+                {pathname.startsWith("/properties") && pathname !== "/properties/add" && (
+                  <motion.span
+                    layoutId="activeNavUnderline"
+                    className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+              </button>
+
+              {/* Animated Dropdown Menu */}
+              <AnimatePresence>
+                {propertiesDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="absolute left-0 mt-1 w-80 rounded-2xl border border-border bg-card p-3 shadow-2xl z-50 backdrop-blur-xl"
+                  >
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-3 py-1.5 mb-1 flex items-center justify-between border-b border-border/60">
+                      <span>Filter Category</span>
+                      <span className="text-primary font-extrabold">{categoryCounts.ALL ?? 0} Listings</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      {propertyCategories.map((cat) => {
+                        const Icon = cat.icon;
+                        const count = categoryCounts[cat.key as keyof typeof categoryCounts] ?? 0;
+                        const currentPropType = searchParams?.get("propertyType")?.toUpperCase();
+                        const isActive =
+                          cat.key === "ALL"
+                            ? pathname === "/properties" && !currentPropType
+                            : currentPropType === cat.key;
+
+                        return (
+                          <Link
+                            key={cat.key}
+                            href={cat.href}
+                            onClick={() => setPropertiesDropdownOpen(false)}
+                            className={`flex items-center justify-between p-2.5 rounded-xl transition-all duration-200 group ${
+                              isActive
+                                ? "bg-primary/10 text-primary font-semibold"
+                                : "hover:bg-accent text-foreground"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`p-2 rounded-lg ${
+                                  isActive
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-accent group-hover:bg-primary/10 group-hover:text-primary transition-colors"
+                                }`}
+                              >
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium leading-none">{cat.name}</div>
+                                <div className="text-[11px] text-muted-foreground mt-1 font-normal">
+                                  {cat.description}
+                                </div>
+                              </div>
+                            </div>
+                            <span
+                              className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                                isActive
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary transition-colors"
+                              }`}
+                            >
+                              ({count})
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {otherNavLinks.map((link) => {
               if (link.requiresAuth && status !== "authenticated") return null;
               const isActive = pathname === link.href;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`text-sm font-medium transition-colors relative py-2 ${isActive
-                    ? "text-primary font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
-                    }`}
+                  className={`text-sm font-medium transition-colors relative py-2 ${
+                    isActive
+                      ? "text-primary font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
                   {link.name}
                   {isActive && (
@@ -260,7 +446,70 @@ export default function Navbar() {
                 hidden: {},
               }}
             >
-              {navLinks.map((link) => {
+              <Link
+                href="/"
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-colors ${
+                  pathname === "/" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+              >
+                <HomeIcon className="h-5 w-5" />
+                Home
+              </Link>
+
+              {/* Mobile Properties Accordion */}
+              <div className="rounded-xl border border-border/60 overflow-hidden">
+                <button
+                  onClick={() => setMobilePropertiesOpen((p) => !p)}
+                  className="flex items-center justify-between w-full px-3 py-3 text-base font-medium text-foreground hover:bg-accent transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    <span>Properties</span>
+                  </div>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 ${
+                      mobilePropertiesOpen ? "rotate-180 text-primary" : "text-muted-foreground"
+                    }`}
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {mobilePropertiesOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="px-3 pb-3 pt-1 space-y-1 bg-accent/30"
+                    >
+                      {propertyCategories.map((cat) => {
+                        const Icon = cat.icon;
+                        const count = categoryCounts[cat.key as keyof typeof categoryCounts] ?? 0;
+                        return (
+                          <Link
+                            key={cat.key}
+                            href={cat.href}
+                            onClick={() => {
+                              setIsOpen(false);
+                              setMobilePropertiesOpen(false);
+                            }}
+                            className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <Icon className="h-4 w-4 text-primary" />
+                              <span>{cat.name}</span>
+                            </div>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-muted text-foreground">
+                              ({count})
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {otherNavLinks.map((link) => {
                 if (link.requiresAuth && status !== "authenticated") return null;
                 const isActive = pathname === link.href;
                 const Icon = link.icon;
@@ -271,10 +520,11 @@ export default function Navbar() {
                   >
                     <Link
                       href={link.href}
-                      className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-colors ${isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                        }`}
+                      className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-colors ${
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      }`}
                     >
                       <Icon className="h-5 w-5" />
                       {link.name}

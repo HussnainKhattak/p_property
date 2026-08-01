@@ -25,3 +25,17 @@ export function formatPKR(price: number): string {
   }
   return `${price.toLocaleString()} PKR`;
 }
+
+/**
+ * Normalizes property type string (e.g. "Apartment", "apartments", "APARTMENT")
+ * to standard Prisma PropertyType enum ("APARTMENT" | "HOUSE" | "SHOP" | "PLOT").
+ */
+export function normalizePropertyType(type?: string | null): "APARTMENT" | "HOUSE" | "SHOP" | "PLOT" | undefined {
+  if (!type) return undefined;
+  const upper = type.trim().toUpperCase();
+  if (upper === "APARTMENT" || upper === "APARTMENTS") return "APARTMENT";
+  if (upper === "HOUSE" || upper === "HOUSES") return "HOUSE";
+  if (upper === "SHOP" || upper === "SHOPS") return "SHOP";
+  if (upper === "PLOT" || upper === "PLOTS") return "PLOT";
+  return undefined;
+}

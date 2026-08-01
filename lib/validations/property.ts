@@ -1,7 +1,14 @@
 import { z } from "zod";
 
-// Match Prisma enum types as string validation schema
-export const PropertyTypeEnum = z.enum(["HOUSE", "APARTMENT", "SHOP", "PLOT"]);
+import { normalizePropertyType } from "../utils";
+
+// Match Prisma enum types as string validation schema with normalization support
+export const PropertyTypeEnum = z.preprocess(
+  (val) => (typeof val === "string" ? normalizePropertyType(val) : val),
+  z.enum(["HOUSE", "APARTMENT", "SHOP", "PLOT"], {
+    message: "Property type is required and must be Apartment, House, Shop, or Plot.",
+  })
+);
 export const ListingTypeEnum = z.enum(["RENT", "SALE"]);
 export const PropertyStatusEnum = z.enum(["AVAILABLE", "SOLD", "RENTED"]);
 

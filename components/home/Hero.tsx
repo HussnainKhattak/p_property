@@ -25,6 +25,7 @@ const propertyTypes = [
 
 export default function Hero() {
   const [listingType, setListingType] = useState<"SALE" | "RENT">("SALE");
+  const [keyword, setKeyword] = useState("");
   const [location, setLocation] = useState("");
   const [propertyType, setPropertyType] = useState("");
   const [priceRange, setPriceRange] = useState("");
@@ -170,7 +171,21 @@ export default function Hero() {
               </div>
 
               {/* Input Fields */}
-              <div className="space-y-4">
+              <div className="space-y-3.5">
+                {/* Keyword Search */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-zinc-400 flex items-center gap-1">
+                    <Search className="h-3.5 w-3.5 text-primary" /> Keyword / Title
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Search e.g. House, Villa, DHA..."
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-zinc-900 transition-colors"
+                  />
+                </div>
+
                 {/* Location */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-zinc-400 flex items-center gap-1">
@@ -179,7 +194,7 @@ export default function Hero() {
                   <select
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="w-full h-12 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary focus:bg-zinc-900 transition-colors"
+                    className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary focus:bg-zinc-900 transition-colors"
                   >
                     <option value="" className="bg-zinc-900 text-white">All Locations</option>
                     {locations.map((loc) => (
@@ -196,7 +211,7 @@ export default function Hero() {
                   <select
                     value={propertyType}
                     onChange={(e) => setPropertyType(e.target.value)}
-                    className="w-full h-12 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary focus:bg-zinc-900 transition-colors"
+                    className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary focus:bg-zinc-900 transition-colors"
                   >
                     <option value="" className="bg-zinc-900 text-white">All Types</option>
                     {propertyTypes.map((type) => (
@@ -213,25 +228,34 @@ export default function Hero() {
                   <select
                     value={priceRange}
                     onChange={(e) => setPriceRange(e.target.value)}
-                    className="w-full h-12 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary focus:bg-zinc-900 transition-colors"
+                    className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary focus:bg-zinc-900 transition-colors"
                   >
                     <option value="" className="bg-zinc-900 text-white">Any Budget</option>
-                    <option value="low" className="bg-zinc-900 text-white">Under 1 Crore</option>
-                    <option value="medium" className="bg-zinc-900 text-white">1 - 5 Crore</option>
-                    <option value="high" className="bg-zinc-900 text-white">5 Crore +</option>
+                    <option value="0-10lakh" className="bg-zinc-900 text-white">0 - 10 Lakh</option>
+                    <option value="10-50lakh" className="bg-zinc-900 text-white">10 - 50 Lakh</option>
+                    <option value="50lakh-1crore" className="bg-zinc-900 text-white">50 Lakh - 1 Crore</option>
+                    <option value="1crore-plus" className="bg-zinc-900 text-white">1 Crore+</option>
                   </select>
                 </div>
 
                 {/* Search Button */}
                 <motion.div whileHover={hoverScale} whileTap={tapScale}>
                   <Link
-                    href={`/properties?listingType=${listingType}&area=${encodeURIComponent(location)}&propertyType=${propertyType}${
-                      priceRange === "low"
-                        ? "&maxPrice=10000000"
-                        : priceRange === "medium"
-                        ? "&minPrice=10000000&maxPrice=50000000"
-                        : priceRange === "high"
-                        ? "&minPrice=50000000"
+                    href={`/properties?listingType=${listingType}${
+                      keyword ? `&query=${encodeURIComponent(keyword)}` : ""
+                    }${
+                      location ? `&area=${encodeURIComponent(location)}` : ""
+                    }${
+                      propertyType ? `&propertyType=${propertyType}` : ""
+                    }${
+                      priceRange === "0-10lakh"
+                        ? "&minPrice=0&maxPrice=1000000"
+                        : priceRange === "10-50lakh"
+                        ? "&minPrice=1000000&maxPrice=5000000"
+                        : priceRange === "50lakh-1crore"
+                        ? "&minPrice=5000000&maxPrice=10000000"
+                        : priceRange === "1crore-plus"
+                        ? "&minPrice=10000000"
                         : ""
                     }`}
                     className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/95 transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 mt-2"

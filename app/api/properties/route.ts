@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { propertySchema } from "@/lib/validations/property";
-import { Prisma, PropertyType, ListingType } from "@prisma/client";
+import { Prisma, ListingType } from "@prisma/client";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { normalizePropertyType } from "@/lib/utils";
 
 // POST /api/properties — Create a new property listing
 export async function POST(req: Request) {
@@ -67,14 +68,15 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const area        = searchParams.get("area");
-    const propType    = searchParams.get("propertyType");
+    const rawPropType = searchParams.get("propertyType");
+    const propType    = normalizePropertyType(rawPropType);
     const listType    = searchParams.get("listingType");
     const subcategory = searchParams.get("subcategory");
     const ownerId     = searchParams.get("ownerId");
 
     const where: Prisma.PropertyWhereInput = {};
-    if (area)        where.area         = { contains: area,     mode: "insensitive" };
-    if (propType)    where.propertyType = propType as PropertyType;
+    if (area)        where.area         = { contains: area, mode: "insensitive" };
+    if (propType)    where.propertyType = propType;
     if (listType)    where.listingType  = listType as ListingType;
     if (subcategory) where.subcategory  = subcategory;
     if (ownerId)     where.ownerId      = ownerId;

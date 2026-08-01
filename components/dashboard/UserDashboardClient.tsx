@@ -63,15 +63,16 @@ export default function UserDashboardClient() {
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
   const [mediaType, setMediaType] = useState<"image" | "video">("image");
 
-  // Fetch Dashboard data
+  const [fetchedSaved, setFetchedSaved] = useState(false);
+  const [fetchedRecent, setFetchedRecent] = useState(false);
+
+  // Fetch Core Profile and User Listings
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      // Fetch Profile
       const profileRes = await fetch("/api/profile");
       const profileData = await profileRes.json();
 
-      // Stale session: JWT refers to a deleted user account — force re-login
       if (!profileData.user) {
         await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
         window.location.href = "/login?reason=session_expired";
@@ -85,8 +86,6 @@ export default function UserDashboardClient() {
         profileImage: profileData.user.profileImage || "",
       });
 
-      // Fetch User's Listings — pass ownerId as query param for server-side filtering
-      // Admin users get ALL properties so they can manage the entire platform
       if (profileData.user?.id) {
         const isAdmin = profileData.user.role === "ADMIN";
         const listingsUrl = isAdmin
@@ -96,24 +95,6 @@ export default function UserDashboardClient() {
         if (propertiesRes.ok) {
           const propertiesData = await propertiesRes.json();
           setProperties(propertiesData);
-        }
-      }
-
-      // Fetch Saved Properties
-      const savedRes = await fetch("/api/saved-properties");
-      if (savedRes.ok) {
-        const savedData = await savedRes.json();
-        setSavedProperties(savedData);
-      }
-
-      // Fetch Recently Viewed properties from LocalStorage
-      const localRecentIds = JSON.parse(localStorage.getItem("recently_viewed_properties") || "[]");
-      if (localRecentIds.length > 0) {
-        const recentRes = await fetch(`/api/properties/search?limit=10`);
-        if (recentRes.ok) {
-          const recentData = await recentRes.json();
-          const filtered = recentData.properties.filter((p: Property) => localRecentIds.includes(p.id));
-          setRecentlyViewed(filtered);
         }
       }
     } catch (err) {
@@ -126,6 +107,36 @@ export default function UserDashboardClient() {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  // Fetch Saved Bookmarks on Demand
+  useEffect(() => {
+    if (activeTab === "saved" && !fetchedSaved) {
+      fetch("/api/saved-properties")
+        .then((res) => (res.ok ? res.json() : []))
+        .then((data) => {
+          setSavedProperties(data);
+          setFetchedSaved(true);
+        })
+        .catch(console.error);
+    }
+  }, [activeTab, fetchedSaved]);
+
+  // Fetch Recently Viewed on Demand
+  useEffect(() => {
+    if (activeTab === "recent" && !fetchedRecent) {
+      const localRecentIds = JSON.parse(localStorage.getItem("recently_viewed_properties") || "[]");
+      if (localRecentIds.length > 0) {
+        fetch(`/api/properties/search?limit=10`)
+          .then((res) => (res.ok ? res.json() : { properties: [] }))
+          .then((data) => {
+            const filtered = data.properties.filter((p: Property) => localRecentIds.includes(p.id));
+            setRecentlyViewed(filtered);
+            setFetchedRecent(true);
+          })
+          .catch(console.error);
+      }
+    }
+  }, [activeTab, fetchedRecent]);
 
   // Update Profile Information
   const handleProfileSave = async (e: React.FormEvent) => {

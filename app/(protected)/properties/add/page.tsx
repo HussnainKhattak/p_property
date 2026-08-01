@@ -266,26 +266,43 @@ export default function AddPropertyPage() {
     }
 
     try {
-      const isPlot = selectedType === "PLOT";
-      const finalListingType = isPlot ? "SALE" : form.subcategory === "RENT" ? "RENT" : "SALE";
-      const finalSubcategory = isPlot ? form.subcategory : form.subcategory;
+      // For plots: listingType is always SALE; subcategory is RESIDENTIAL or COMMERCIAL
+      // For house/apartment/shop: subcategory field holds SALE/RENT which becomes listingType
+      const finalListingType =
+        selectedType === "PLOT"
+          ? "SALE"
+          : form.subcategory === "RENT"
+          ? "RENT"
+          : "SALE";
 
-      const payload = {
-        title: form.title,
-        description: form.description,
-        price: parseFloat(form.price),
-        marla: parseFloat(form.marla),
-        city: form.city,
-        area: form.area,
-        address: form.address,
+      // subcategory stored in DB:
+      // Plots   → "RESIDENTIAL" or "COMMERCIAL"
+      // Others  → "SALE" or "RENT" (mirrors listingType for filtering/display)
+      const finalSubcategory = form.subcategory;
+
+      const payload: Record<string, unknown> = {
+        title:        form.title,
+        description:  form.description,
+        price:        parseFloat(form.price),
+        marla:        parseFloat(form.marla),
+        city:         form.city,
+        area:         form.area,
+        address:      form.address,
         propertyType: selectedType,
-        subcategory: finalSubcategory,
-        listingType: finalListingType,
-        bedrooms: ["APARTMENT", "HOUSE"].includes(selectedType) ? parseInt(form.bedrooms) || 0 : 0,
-        bathrooms: ["APARTMENT", "HOUSE"].includes(selectedType) ? parseInt(form.bathrooms) || 0 : 0,
+        subcategory:  finalSubcategory,
+        listingType:  finalListingType,
+        bedrooms:     ["APARTMENT", "HOUSE"].includes(selectedType) ? parseInt(form.bedrooms) || 1 : 0,
+        bathrooms:    ["APARTMENT", "HOUSE"].includes(selectedType) ? parseInt(form.bathrooms) || 1 : 0,
         imageUrls,
-        videoUrl: videoUrl || null,
+        videoUrl:     videoUrl || null,
       };
+
+      // Only include apartmentName for APARTMENT type
+      if (selectedType === "APARTMENT" && form.apartmentName.trim()) {
+        payload.apartmentName = form.apartmentName.trim();
+      }
+
+      console.log("[AddProperty] Submitting payload:", payload);
 
       const res = await fetch("/api/properties", {
         method: "POST",
@@ -294,9 +311,11 @@ export default function AddPropertyPage() {
       });
 
       const data = await res.json();
+      console.log("[AddProperty] Server response:", res.status, data);
 
       if (!res.ok) {
-        showError(data.error || "Failed to create property listing.");
+        // Show the actual error from the server (validation issue, DB error, etc.)
+        showError(data.error || `Server error (${res.status}). Please try again.`);
         return;
       }
 
@@ -305,8 +324,9 @@ export default function AddPropertyPage() {
         router.push("/dashboard");
         router.refresh();
       }, 1500);
-    } catch {
-      showError("Network error. Please try again.");
+    } catch (err: any) {
+      console.error("[AddProperty] Network/unexpected error:", err);
+      showError("Network error. Please check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }

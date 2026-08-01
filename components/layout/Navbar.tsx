@@ -70,6 +70,7 @@ export default function Navbar() {
     setIsOpen(false);
     setIsDropdownOpen(false);
     setPropertiesDropdownOpen(false);
+    setMobilePropertiesOpen(false);
   }, [pathname]);
 
   const propertyCategories = [
@@ -407,7 +408,13 @@ export default function Navbar() {
               {theme === "dark" ? <Sun className="h-5 w-5 text-amber-400" /> : <Moon className="h-5 w-5 text-slate-600" />}
             </motion.button>
             <motion.button
-              onClick={() => setIsOpen(!isOpen)}
+              onClick={() => {
+                const nextOpen = !isOpen;
+                setIsOpen(nextOpen);
+                // Auto-expand properties accordion when drawer opens
+                if (nextOpen) setMobilePropertiesOpen(true);
+                else setMobilePropertiesOpen(false);
+              }}
               className="p-2 rounded-xl border border-border hover:bg-accent text-foreground"
               whileTap={{ scale: 0.9 }}
             >
@@ -460,17 +467,24 @@ export default function Navbar() {
               <div className="rounded-xl border border-border/60 overflow-hidden">
                 <button
                   onClick={() => setMobilePropertiesOpen((p) => !p)}
-                  className="flex items-center justify-between w-full px-3 py-3 text-base font-medium text-foreground hover:bg-accent transition-colors"
+                  className={`flex items-center justify-between w-full px-3 py-3 text-base font-medium transition-colors ${
+                    mobilePropertiesOpen ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Building2 className="h-5 w-5 text-primary" />
+                    <Building2 className={`h-5 w-5 ${mobilePropertiesOpen ? "text-primary" : "text-primary"}`} />
                     <span>Properties</span>
                   </div>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      mobilePropertiesOpen ? "rotate-180 text-primary" : "text-muted-foreground"
-                    }`}
-                  />
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                      {categoryCounts.ALL ?? 0}
+                    </span>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform duration-200 ${
+                        mobilePropertiesOpen ? "rotate-180 text-primary" : "text-muted-foreground"
+                      }`}
+                    />
+                  </div>
                 </button>
 
                 <AnimatePresence>
@@ -479,11 +493,17 @@ export default function Navbar() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.22, ease: "easeOut" }}
                       className="px-3 pb-3 pt-1 space-y-1 bg-accent/30"
                     >
                       {propertyCategories.map((cat) => {
                         const Icon = cat.icon;
                         const count = categoryCounts[cat.key as keyof typeof categoryCounts] ?? 0;
+                        const currentPropType = searchParams?.get("propertyType")?.toUpperCase();
+                        const isActive =
+                          cat.key === "ALL"
+                            ? pathname === "/properties" && !currentPropType
+                            : currentPropType === cat.key;
                         return (
                           <Link
                             key={cat.key}
@@ -492,14 +512,24 @@ export default function Navbar() {
                               setIsOpen(false);
                               setMobilePropertiesOpen(false);
                             }}
-                            className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                            className={`flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium transition-colors ${
+                              isActive
+                                ? "bg-primary/10 text-primary font-semibold"
+                                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                            }`}
                           >
                             <div className="flex items-center gap-2.5">
-                              <Icon className="h-4 w-4 text-primary" />
+                              <div className={`p-1.5 rounded-lg ${
+                                isActive ? "bg-primary text-primary-foreground" : "bg-muted"
+                              }`}>
+                                <Icon className="h-3.5 w-3.5" />
+                              </div>
                               <span>{cat.name}</span>
                             </div>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-muted text-foreground">
-                              ({count})
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                              isActive ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                            }`}>
+                              {count}
                             </span>
                           </Link>
                         );

@@ -48,9 +48,13 @@ export default function DashboardActions({
   const openMenu = useCallback(() => {
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
+    // On narrow screens, clamp right so the 208px (w-52) menu never overflows left edge
+    const menuWidth = 208;
+    const rawRight = window.innerWidth - rect.right;
+    const clampedRight = Math.min(rawRight, window.innerWidth - menuWidth - 8);
     setMenuCoords({
-      top: rect.bottom + 6,                        // 6px gap below button
-      right: window.innerWidth - rect.right,       // align right edge
+      top: rect.bottom + 6,
+      right: Math.max(8, clampedRight),
     });
     setMenuOpen(true);
   }, []);
@@ -61,12 +65,13 @@ export default function DashboardActions({
   // before the menu item's onClick handler runs (React 18 root-level event issue).
   useEffect(() => {
     if (!menuOpen) return;
-    const handleOutsideMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node;
+    const handleOutside = (e: MouseEvent | TouchEvent) => {
+      const target = (e instanceof TouchEvent ? e.touches[0]?.target : e.target) as Node | null;
+      if (!target) return;
       const clickedInsideButton = buttonRef.current?.contains(target);
       const clickedInsideMenu   = menuRef.current?.contains(target);
       if (!clickedInsideButton && !clickedInsideMenu) {
-        dbg("Menu closed (outside click)");
+        dbg("Menu closed (outside tap/click)");
         setMenuOpen(false);
       }
     };
@@ -74,10 +79,13 @@ export default function DashboardActions({
       dbg("Menu closed (scroll)");
       setMenuOpen(false);
     };
-    document.addEventListener("mousedown", handleOutsideMouseDown);
+    // Both mousedown (desktop) and touchstart (mobile) for outside-close
+    document.addEventListener("mousedown", handleOutside as EventListener);
+    document.addEventListener("touchstart", handleOutside as EventListener, { passive: true });
     window.addEventListener("scroll", handleScroll, true);
     return () => {
-      document.removeEventListener("mousedown", handleOutsideMouseDown);
+      document.removeEventListener("mousedown", handleOutside as EventListener);
+      document.removeEventListener("touchstart", handleOutside as EventListener);
       window.removeEventListener("scroll", handleScroll, true);
     };
   }, [menuOpen]);

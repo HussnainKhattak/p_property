@@ -15,37 +15,57 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
+    console.log("[API POST /properties] body.propertyType:", body.propertyType, "| body.listingType:", body.listingType, "| body.subcategory:", body.subcategory);
+
     const parsed = propertySchema.safeParse(body);
 
     if (!parsed.success) {
+      const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+      console.error("[API POST /properties] Validation failed:", issues);
       return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+        { error: issues[0] ?? "Validation failed", details: issues },
         { status: 400 }
       );
     }
 
-    const property = await db.property.create({
-      data: {
-        title:        parsed.data.title,
-        description:  parsed.data.description,
-        price:        parsed.data.price,
-        marla:        parsed.data.marla,
-        city:         parsed.data.city,
-        area:         parsed.data.area,
-        address:      parsed.data.address,
-        propertyType: parsed.data.propertyType,
-        subcategory:  parsed.data.subcategory,
-        listingType:  parsed.data.listingType,
-        bedrooms:     parsed.data.bedrooms,
-        bathrooms:    parsed.data.bathrooms,
-        imageUrls:    parsed.data.imageUrls ?? [],
-        videoUrl:     parsed.data.videoUrl ?? null,
-        ownerId:      session.user.id,
-      },
-    });
+    // Derive clean subcategory: for non-plot types use the propertyType as subcategory base
+    // so we always store a meaningful value and never mix it with listingType
+    const cleanSubcategory =
+      ["SHOP", "APARTMENT", "HOUSE"].includes(parsed.data.propertyType)
+        ? parsed.data.propertyType  // e.g. "SHOP", "APARTMENT", "HOUSE"
+        : parsed.data.subcategory;  // "RESIDENTIAL" or "COMMERCIAL" for plots
 
-    // Immediately invalidate all homepage and listing caches
-    // so new property appears without requiring a manual refresh
+    let property;
+    try {
+      property = await db.property.create({
+        data: {
+          title:        parsed.data.title,
+          description:  parsed.data.description,
+          price:        parsed.data.price,
+          marla:        parsed.data.marla,
+          city:         parsed.data.city,
+          area:         parsed.data.area,
+          address:      parsed.data.address,
+          propertyType: parsed.data.propertyType,
+          subcategory:  cleanSubcategory,
+          listingType:  parsed.data.listingType,
+          bedrooms:     parsed.data.bedrooms ?? 0,
+          bathrooms:    parsed.data.bathrooms ?? 0,
+          imageUrls:    parsed.data.imageUrls ?? [],
+          videoUrl:     parsed.data.videoUrl ?? null,
+          ownerId:      session.user.id,
+        },
+      });
+    } catch (dbErr: any) {
+      console.error("[API POST /properties] Prisma/DB error:", dbErr?.message, dbErr?.code);
+      return NextResponse.json(
+        { error: `Database error: ${dbErr?.message ?? "Unknown error"}` },
+        { status: 500 }
+      );
+    }
+
+    console.log("[API POST /properties] Created property id:", property.id, "type:", property.propertyType);
+
     revalidatePath("/");
     revalidatePath("/properties");
     revalidateTag("properties");
@@ -55,9 +75,9 @@ export async function POST(req: Request) {
     return NextResponse.json(property, { status: 201 });
   } catch (err: unknown) {
     const error = err as Error;
-    console.error("Property creation error:", error);
+    console.error("[API POST /properties] Unexpected error:", error?.message, error);
     return NextResponse.json(
-      { error: "Failed to create property." },
+      { error: error?.message ?? "Failed to create property" },
       { status: 500 }
     );
   }

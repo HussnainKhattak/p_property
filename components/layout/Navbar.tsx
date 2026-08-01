@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -24,7 +24,7 @@ import {
   Map,
 } from "lucide-react";
 
-export default function Navbar() {
+function NavbarContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
@@ -612,5 +612,28 @@ export default function Navbar() {
         )}
       </AnimatePresence>
     </nav>
+  );
+}
+
+export default function Navbar() {
+  return (
+    <Suspense
+      fallback={
+        <nav className="sticky top-0 z-50 w-full bg-background/80 border-b border-border">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-primary text-primary-foreground">
+                <Building2 className="h-6 w-6" />
+              </div>
+              <span className="font-bold text-xl sm:text-2xl tracking-tight">
+                Peshawar <span className="text-primary font-extrabold">Property</span> Hub
+              </span>
+            </div>
+          </div>
+        </nav>
+      }
+    >
+      <NavbarContent />
+    </Suspense>
   );
 }

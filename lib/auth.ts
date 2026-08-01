@@ -81,33 +81,55 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.role && session.user) {
         session.user.role = token.role as Role;
       }
+      if (token.name && session.user) {
+        session.user.name = token.name;
+      }
+      if (token.picture && session.user) {
+        session.user.image = token.picture as string;
+      }
       return session;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (!token.sub) return token;
+
+      // Handle session update (when useSession().update() is called)
+      if (trigger === "update" && session) {
+        if (session.name) token.name = session.name;
+        if (session.image) token.picture = session.image;
+
+        const updated = await db.user.findUnique({
+          where: { id: token.sub },
+          select: { name: true, image: true, profileImage: true, role: true },
+        });
+        if (updated) {
+          token.name = updated.name;
+          token.picture = updated.profileImage || updated.image;
+          token.role = updated.role;
+        }
+        return token;
+      }
 
       // If user object was passed on initial login, populate token immediately without DB lookup
       if (user) {
         token.name = user.name;
         token.email = user.email;
+        token.picture = (user as any).profileImage || user.image;
         token.role = (user as any).role;
         return token;
       }
 
       // Fast check only when token needs refresh
-      if (!token.role) {
-        const jwtStart = Date.now();
+      if (!token.role || !token.picture) {
         const existingUser = await db.user.findUnique({
           where: { id: token.sub },
-          select: { name: true, email: true, role: true },
+          select: { name: true, email: true, image: true, profileImage: true, role: true },
         });
-
-        console.log(`[Perf Audit] JWT lookup completed in ${Date.now() - jwtStart}ms`);
 
         if (!existingUser) return token;
 
         token.name = existingUser.name;
         token.email = existingUser.email;
+        token.picture = existingUser.profileImage || existingUser.image;
         token.role = existingUser.role;
       }
 

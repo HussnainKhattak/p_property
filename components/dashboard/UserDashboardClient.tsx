@@ -9,6 +9,7 @@ import {
   BarChart3, Eye, TrendingUp, Award, Calendar, MapPin
 } from "lucide-react";
 import { formatPKR } from "@/lib/utils";
+import { useSession } from "next-auth/react";
 import DashboardActions from "./DashboardActions";
 import { uploadDirectToCloudinary } from "@/lib/cloudinary-client";
 
@@ -138,25 +139,124 @@ export default function UserDashboardClient() {
     }
   }, [activeTab, fetchedRecent]);
 
-  // Update Profile Information
-  const handleProfileSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingProfile(true);
+  const { update: updateSession } = useSession();
+
+  // Avatar image upload handler (Cloudinary + instant DB save)
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!validTypes.includes(file.type.toLowerCase())) {
+      setProfileMessage({
+        type: "error",
+        text: "Invalid image format. Supported formats: JPG, JPEG, PNG, WEBP.",
+      });
+      return;
+    }
+
+    setUploadingMedia(true);
+    setProfileMessage(null);
+
+    try {
+      const url = await uploadDirectToCloudinary(file);
+      setProfileForm((prev) => ({ ...prev, profileImage: url }));
+
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: profileForm.name || user?.name || "",
+          phone: profileForm.phone || null,
+          profileImage: url,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setUser((prev) => (prev ? { ...prev, ...data.user } : prev));
+        await updateSession({
+          name: data.user.name,
+          image: data.user.profileImage || data.user.image,
+        });
+        setProfileMessage({ type: "success", text: "Profile picture updated successfully!" });
+      } else {
+        setProfileMessage({ type: "error", text: data.error || "Failed to update profile picture." });
+      }
+    } catch (err: any) {
+      setProfileMessage({ type: "error", text: err.message || "Error uploading image to Cloudinary." });
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    setUploadingMedia(true);
     setProfileMessage(null);
     try {
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: profileForm.name,
+          name: profileForm.name || user?.name || "",
           phone: profileForm.phone || null,
-          profileImage: profileForm.profileImage || null,
+          profileImage: null,
         }),
       });
       const data = await res.json();
       if (res.ok) {
-        setUser((prev) => prev ? { ...prev, ...data.user } : prev);
-        setProfileMessage({ type: "success", text: "Profile details updated successfully!" });
+        setProfileForm((prev) => ({ ...prev, profileImage: "" }));
+        setUser((prev) => (prev ? { ...prev, ...data.user } : prev));
+        await updateSession({ name: data.user.name, image: null });
+        setProfileMessage({ type: "success", text: "Profile picture removed successfully." });
+      } else {
+        setProfileMessage({ type: "error", text: data.error || "Failed to remove photo." });
+      }
+    } catch {
+      setProfileMessage({ type: "error", text: "Failed to remove profile picture." });
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  // Update Profile Information
+  const handleProfileSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    setProfileMessage(null);
+
+    const trimmedName = profileForm.name.trim();
+
+    if (trimmedName.length < 3) {
+      setProfileMessage({ type: "error", text: "Username must be at least 3 characters." });
+      setSavingProfile(false);
+      return;
+    }
+    if (trimmedName.length > 30) {
+      setProfileMessage({ type: "error", text: "Username cannot exceed 30 characters." });
+      setSavingProfile(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: trimmedName,
+          phone: profileForm.phone || null,
+          profileImage: profileForm.profileImage || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setUser((prev) => (prev ? { ...prev, ...data.user } : prev));
+        await updateSession({
+          name: data.user.name,
+          image: data.user.profileImage || data.user.image,
+        });
+        setProfileMessage({ type: "success", text: "Username and profile details updated successfully!" });
       } else {
         setProfileMessage({ type: "error", text: data.error || "Update failed." });
       }
@@ -777,79 +877,175 @@ export default function UserDashboardClient() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-300">
               
               {/* Photo Upload Side Panel */}
-              <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center gap-4 text-center">
-                <div className="relative">
-                  {profileForm.profileImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={profileForm.profileImage} alt="Profile" className="h-24 w-24 rounded-full object-cover ring-4 ring-primary/20" />
-                  ) : (
-                    <div className="h-24 w-24 rounded-full bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white text-3xl font-black">
-                      {(profileForm.name || "U")[0].toUpperCase()}
-                    </div>
-                  )}
-                  <label className="absolute bottom-0 right-0 p-2 rounded-full bg-card border border-border cursor-pointer hover:bg-accent transition-colors shadow-sm">
-                    <input type="file" accept="image/*" onChange={handleMediaUpload} className="hidden" disabled={uploadingMedia} />
-                    {uploadingMedia ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5 text-muted-foreground" />}
-                  </label>
+              <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center gap-5 text-center">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="relative group">
+                    {profileForm.profileImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={profileForm.profileImage}
+                        alt="Profile Avatar"
+                        className="h-28 w-28 rounded-full object-cover ring-4 ring-primary/20 shadow-md transition-all group-hover:opacity-90"
+                      />
+                    ) : (
+                      <div className="h-28 w-28 rounded-full bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center text-white text-3xl font-black ring-4 ring-primary/20 shadow-md">
+                        {(profileForm.name || user?.name || "U")
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2)}
+                      </div>
+                    )}
+
+                    <label className="absolute bottom-0 right-0 p-2.5 rounded-full bg-primary text-primary-foreground border-2 border-card cursor-pointer hover:scale-105 transition-all shadow-md">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/jpg"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                        disabled={uploadingMedia}
+                      />
+                      {uploadingMedia ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Camera className="h-4 w-4" />
+                      )}
+                    </label>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-1">
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      JPG, JPEG, PNG, or WEBP (Max 10MB)
+                    </p>
+                    {profileForm.profileImage && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveAvatar}
+                        disabled={uploadingMedia}
+                        className="text-xs text-red-500 font-semibold hover:underline mt-1"
+                      >
+                        Remove Photo
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="text-left w-full border-t border-border/60 pt-4 mt-2">
-                  <p className="text-xs font-bold text-muted-foreground uppercase">Authorization System</p>
-                  <p className="text-sm font-bold text-foreground mt-1">{user?.role || "USER"}</p>
+                {/* User Info Stats Summary */}
+                <div className="text-left w-full border-t border-border/60 pt-4 mt-2 space-y-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Account Role</p>
+                    <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                      {user?.role || "USER"}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Member Since</p>
+                    <p className="text-xs font-semibold text-foreground mt-0.5">
+                      {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Listings</p>
+                    <p className="text-xs font-semibold text-foreground mt-0.5">
+                      {user?._count?.properties ?? properties.length} Active Listings
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {/* Input Form Panel */}
               <div className="md:col-span-2 bg-card border border-border rounded-2xl p-6 text-left">
-                <h3 className="font-bold text-base text-foreground mb-4">Account Settings</h3>
+                <div className="border-b border-border/60 pb-3 mb-5">
+                  <h3 className="font-extrabold text-lg text-foreground">Profile & Account Settings</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Update your username, contact info, and profile avatar.</p>
+                </div>
 
                 {profileMessage && (
-                  <div className={`px-4 py-2.5 rounded-xl text-xs font-semibold text-center mb-4 ${
-                    profileMessage.type === "success" ? "bg-primary/10 text-primary border border-primary/20" : "bg-red-500/10 text-red-500 border border-red-500/20"
-                  }`}>
+                  <div
+                    className={`px-4 py-3 rounded-xl text-xs font-bold text-center mb-5 animate-in fade-in duration-200 ${
+                      profileMessage.type === "success"
+                        ? "bg-primary/10 text-primary border border-primary/20"
+                        : "bg-red-500/10 text-red-500 border border-red-500/20"
+                    }`}
+                  >
                     {profileMessage.text}
                   </div>
                 )}
 
-                <form onSubmit={handleProfileSave} className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-muted-foreground uppercase">Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={profileForm.name}
-                      onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))}
-                      className="h-11 px-4 border border-border rounded-xl bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    />
+                <form onSubmit={handleProfileSave} className="flex flex-col gap-5">
+                  {/* Current Username Badge */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Current Username
+                    </label>
+                    <div className="h-11 px-4 border border-border rounded-xl bg-muted/50 text-sm font-semibold text-foreground flex items-center">
+                      {user?.name || "No username set"}
+                    </div>
                   </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-muted-foreground uppercase">Email Address</label>
+                  {/* New Username Input */}
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="username" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      New Username <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="username"
+                      type="text"
+                      required
+                      minLength={3}
+                      maxLength={30}
+                      value={profileForm.name}
+                      onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))}
+                      placeholder="Enter new username (3 - 30 characters)"
+                      className="h-11 px-4 border border-border rounded-xl bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Username must be between 3 and 30 characters and unique across the platform.
+                    </p>
+                  </div>
+
+                  {/* Email Address (Read-only) */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+                      <span>Email Address</span>
+                      <span className="text-[10px] text-muted-foreground lowercase">(read-only for security)</span>
+                    </label>
                     <input
                       type="email"
                       value={user?.email || ""}
                       readOnly
-                      className="h-11 px-4 border border-border rounded-xl bg-muted text-sm text-muted-foreground cursor-not-allowed"
+                      className="h-11 px-4 border border-border rounded-xl bg-muted/60 text-sm text-muted-foreground cursor-not-allowed"
                     />
                   </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-muted-foreground uppercase">Phone Number</label>
+                  {/* Phone Number */}
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="phone" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Phone Number
+                    </label>
                     <input
+                      id="phone"
                       type="text"
                       value={profileForm.phone}
                       onChange={(e) => setProfileForm((p) => ({ ...p, phone: e.target.value }))}
-                      className="h-11 px-4 border border-border rounded-xl bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      placeholder="e.g. +92 300 1234567"
+                      className="h-11 px-4 border border-border rounded-xl bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                     />
                   </div>
 
+                  {/* Submit Button */}
                   <button
                     type="submit"
-                    disabled={savingProfile}
-                    className="h-11 bg-primary text-primary-foreground font-bold hover:bg-primary/95 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                    disabled={savingProfile || uploadingMedia}
+                    className="h-12 bg-primary text-primary-foreground font-bold hover:bg-primary/95 rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2 mt-2 shadow-lg shadow-primary/20 disabled:opacity-50"
                   >
-                    {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Save Changes
+                    {savingProfile ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                    <span>{savingProfile ? "Saving Changes..." : "Save Profile Changes"}</span>
                   </button>
                 </form>
               </div>

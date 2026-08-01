@@ -4,9 +4,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const profileSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  name: z.string().min(3, "Username must be at least 3 characters").max(30, "Username cannot exceed 30 characters"),
   phone: z.string().optional().nullable(),
-  profileImage: z.string().url("Invalid image URL").optional().nullable(),
+  profileImage: z.union([z.string().url("Invalid image URL"), z.literal(""), z.null()]).optional(),
 });
 
 // PATCH /api/profile — update authenticated user's profile
@@ -27,22 +27,50 @@ export async function PATCH(req: Request) {
       );
     }
 
+    const trimmedName = parsed.data.name.trim();
+
+    // Check for duplicate username (case-insensitive)
+    const existingName = await db.user.findFirst({
+      where: {
+        name: { equals: trimmedName, mode: "insensitive" },
+        NOT: { id: session.user.id },
+      },
+    });
+
+    if (existingName) {
+      return NextResponse.json(
+        { error: "Username is already taken by another account. Please choose a different username." },
+        { status: 400 }
+      );
+    }
+
+    const newProfileImage = parsed.data.profileImage || null;
+
     const updatedUser = await db.user.update({
       where: { id: session.user.id },
       data: {
-        name: parsed.data.name,
+        name: trimmedName,
         phone: parsed.data.phone ?? null,
-        profileImage: parsed.data.profileImage ?? null,
+        profileImage: newProfileImage,
+        image: newProfileImage,
       },
       select: {
-        id: true, name: true, email: true, phone: true, profileImage: true, role: true,
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        profileImage: true,
+        image: true,
+        role: true,
+        createdAt: true,
       },
     });
 
     return NextResponse.json({ user: updatedUser });
-  } catch {
+  } catch (err: any) {
+    console.error("[Profile API Error]:", err);
     return NextResponse.json(
-      { error: "Failed to update profile." },
+      { error: err?.message || "Failed to update profile." },
       { status: 500 }
     );
   }

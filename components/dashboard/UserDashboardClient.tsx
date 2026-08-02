@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  User, Building2, Heart, History, Plus, 
+import {
+  User, Building2, Heart, History, Plus,
   Camera, Save, Loader2, Sparkles, Image as ImageIcon, Video, Link as LinkIcon,
   BarChart3, Eye, TrendingUp, Award, Calendar, MapPin
 } from "lucide-react";
@@ -52,7 +52,7 @@ export default function UserDashboardClient() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [savedProperties, setSavedProperties] = useState<Property[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<Property[]>([]);
-  
+
   // Forms & Loading
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -75,7 +75,7 @@ export default function UserDashboardClient() {
       const profileData = await profileRes.json();
 
       if (!profileData.user) {
-        await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+        await fetch("/api/auth/logout", { method: "POST" }).catch(() => { });
         window.location.href = "/login?reason=session_expired";
         return;
       }
@@ -347,7 +347,7 @@ export default function UserDashboardClient() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      
+
       {/* Welcome Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-6 mb-8 text-left">
         <div>
@@ -373,7 +373,7 @@ export default function UserDashboardClient() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
+
         {/* Navigation Sidebar */}
         <aside className="lg:col-span-3 flex flex-col gap-2 p-4 bg-card border border-border rounded-2xl">
           {[
@@ -390,11 +390,10 @@ export default function UserDashboardClient() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-left ${
-                  activeTab === tab.id
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 text-left ${activeTab === tab.id
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  }`}
               >
                 <Icon className="h-4.5 w-4.5" />
                 {tab.label}
@@ -405,11 +404,11 @@ export default function UserDashboardClient() {
 
         {/* Content Panel */}
         <main className="lg:col-span-9 flex flex-col gap-6">
-          
+
           {/* TAB: OVERVIEW */}
           {activeTab === "overview" && (
             <div className="flex flex-col gap-8 animate-in fade-in duration-300">
-              
+
               {/* Statistic Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4 shadow-sm text-left">
@@ -474,7 +473,7 @@ export default function UserDashboardClient() {
           {/* TAB: PROPERTY ANALYTICS */}
           {activeTab === "analytics" && (
             <div className="flex flex-col gap-8 animate-in fade-in duration-300">
-              
+
               {/* Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-card border border-border rounded-2xl p-6 flex items-center gap-4 shadow-sm text-left">
@@ -510,7 +509,7 @@ export default function UserDashboardClient() {
 
               {/* Spotlight Cards: Most Viewed & Most Saved */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+
                 {/* Most Viewed */}
                 <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-4 text-left shadow-sm">
                   <div className="flex items-center justify-between">
@@ -717,12 +716,11 @@ export default function UserDashboardClient() {
                           </td>
                           <td className="px-6 py-4">
                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] uppercase font-bold tracking-wider border ${getStatusBadgeClasses(p.status)}`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${
-                                p.status === "AVAILABLE" ? "bg-emerald-500" :
+                              <span className={`h-1.5 w-1.5 rounded-full ${p.status === "AVAILABLE" ? "bg-emerald-500" :
                                 p.status === "BOOKED" ? "bg-red-500" :
-                                p.status === "SOLD" ? "bg-orange-500" :
-                                p.status === "RENTED" ? "bg-amber-500" : "bg-muted-foreground"
-                              }`} />
+                                  p.status === "SOLD" ? "bg-orange-500" :
+                                    p.status === "RENTED" ? "bg-amber-500" : "bg-muted-foreground"
+                                }`} />
                               {p.status}
                             </span>
                           </td>
@@ -875,7 +873,7 @@ export default function UserDashboardClient() {
           {/* TAB: PROFILE SETTINGS */}
           {activeTab === "profile" && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-300">
-              
+
               {/* Photo Upload Side Panel */}
               <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center gap-5 text-center">
                 <div className="flex flex-col items-center gap-3">
@@ -963,11 +961,10 @@ export default function UserDashboardClient() {
 
                 {profileMessage && (
                   <div
-                    className={`px-4 py-3 rounded-xl text-xs font-bold text-center mb-5 animate-in fade-in duration-200 ${
-                      profileMessage.type === "success"
-                        ? "bg-primary/10 text-primary border border-primary/20"
-                        : "bg-red-500/10 text-red-500 border border-red-500/20"
-                    }`}
+                    className={`px-4 py-3 rounded-xl text-xs font-bold text-center mb-5 animate-in fade-in duration-200 ${profileMessage.type === "success"
+                      ? "bg-primary/10 text-primary border border-primary/20"
+                      : "bg-red-500/10 text-red-500 border border-red-500/20"
+                      }`}
                   >
                     {profileMessage.text}
                   </div>
@@ -1065,17 +1062,15 @@ export default function UserDashboardClient() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setMediaType("image")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                      mediaType === "image" ? "bg-primary text-primary-foreground" : "bg-accent text-foreground hover:bg-accent/80"
-                    }`}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${mediaType === "image" ? "bg-primary text-primary-foreground" : "bg-accent text-foreground hover:bg-accent/80"
+                      }`}
                   >
                     Image Upload
                   </button>
                   <button
                     onClick={() => setMediaType("video")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                      mediaType === "video" ? "bg-primary text-primary-foreground" : "bg-accent text-foreground hover:bg-accent/80"
-                    }`}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${mediaType === "video" ? "bg-primary text-primary-foreground" : "bg-accent text-foreground hover:bg-accent/80"
+                      }`}
                   >
                     Video Upload
                   </button>

@@ -12,70 +12,70 @@ interface PropertiesPageProps {
 async function getInitialProperties(sp: Record<string, string | string[] | undefined>) {
   const get = (key: string) => (typeof sp[key] === "string" ? sp[key] as string : "");
 
-  const query       = get("query");
-  const city        = get("city");
-  const area        = get("area");
-  const minPrice    = get("minPrice");
-  const maxPrice    = get("maxPrice");
-  const minMarla    = get("minMarla");
-  const maxMarla    = get("maxMarla");
-  const rawPropType  = get("propertyType");
-  const propType     = normalizePropertyType(rawPropType);
-  const rawListType  = get("listingType");
+  const query = get("query");
+  const city = get("city");
+  const area = get("area");
+  const minPrice = get("minPrice");
+  const maxPrice = get("maxPrice");
+  const minMarla = get("minMarla");
+  const maxMarla = get("maxMarla");
+  const rawPropType = get("propertyType");
+  const propType = normalizePropertyType(rawPropType);
+  const rawListType = get("listingType");
   const normalizedListType = rawListType
     ? rawListType.toUpperCase() === "BUY" || rawListType.toUpperCase() === "SALE"
       ? "SALE"
       : rawListType.toUpperCase() === "RENT"
-      ? "RENT"
-      : undefined
+        ? "RENT"
+        : undefined
     : undefined;
-  const subcategory  = get("subcategory");
-  const bedrooms     = get("bedrooms");
-  const bathrooms    = get("bathrooms");
-  const sortBy       = get("sortBy") || "newest";
-  const page         = parseInt(get("page") || "1");
-  const limit        = 12;
+  const subcategory = get("subcategory");
+  const bedrooms = get("bedrooms");
+  const bathrooms = get("bathrooms");
+  const sortBy = get("sortBy") || "newest";
+  const page = parseInt(get("page") || "1");
+  const limit = 12;
 
   const where: Prisma.PropertyWhereInput = {
     AND: [
       query
         ? {
-            OR: [
-              { title:       { contains: query, mode: "insensitive" } },
-              { description: { contains: query, mode: "insensitive" } },
-              { area:        { contains: query, mode: "insensitive" } },
-              { address:     { contains: query, mode: "insensitive" } },
-              { city:        { contains: query, mode: "insensitive" } },
-            ],
-          }
+          OR: [
+            { title: { contains: query, mode: "insensitive" } },
+            { description: { contains: query, mode: "insensitive" } },
+            { area: { contains: query, mode: "insensitive" } },
+            { address: { contains: query, mode: "insensitive" } },
+            { city: { contains: query, mode: "insensitive" } },
+          ],
+        }
         : {},
       city ? { city: { contains: city, mode: "insensitive" } } : {},
       area
         ? {
-            OR: [
-              { area:    { contains: area, mode: "insensitive" } },
-              { address: { contains: area, mode: "insensitive" } },
-              { city:    { contains: area, mode: "insensitive" } },
-            ],
-          }
+          OR: [
+            { area: { contains: area, mode: "insensitive" } },
+            { address: { contains: area, mode: "insensitive" } },
+            { city: { contains: area, mode: "insensitive" } },
+          ],
+        }
         : {},
-      propType           ? { propertyType: propType }                                          : {},
-      normalizedListType ? { listingType:  normalizedListType as Prisma.EnumListingTypeFilter["equals"] } : {},
-      subcategory        ? { subcategory:  subcategory }                                       : {},
-      minPrice           ? { price: { gte: parseFloat(minPrice) } }                            : {},
-      maxPrice           ? { price: { lte: parseFloat(maxPrice) } }                            : {},
-      minMarla           ? { marla: { gte: parseFloat(minMarla) } }                            : {},
-      maxMarla           ? { marla: { lte: parseFloat(maxMarla) } }                            : {},
-      bedrooms           ? { bedrooms:  { gte: parseInt(bedrooms)  } }                        : {},
-      bathrooms          ? { bathrooms: { gte: parseInt(bathrooms) } }                        : {},
+      propType ? { propertyType: propType } : {},
+      normalizedListType ? { listingType: normalizedListType as Prisma.EnumListingTypeFilter["equals"] } : {},
+      subcategory ? { subcategory: subcategory } : {},
+      minPrice ? { price: { gte: parseFloat(minPrice) } } : {},
+      maxPrice ? { price: { lte: parseFloat(maxPrice) } } : {},
+      minMarla ? { marla: { gte: parseFloat(minMarla) } } : {},
+      maxMarla ? { marla: { lte: parseFloat(maxMarla) } } : {},
+      bedrooms ? { bedrooms: { gte: parseInt(bedrooms) } } : {},
+      bathrooms ? { bathrooms: { gte: parseInt(bathrooms) } } : {},
     ],
   };
 
   const orderByMap: Record<string, Prisma.PropertyOrderByWithRelationInput> = {
-    newest:    { createdAt: "desc" },
-    oldest:    { createdAt: "asc"  },
-    price_asc: { price:     "asc"  },
-    price_desc:{ price:     "desc" },
+    newest: { createdAt: "desc" },
+    oldest: { createdAt: "asc" },
+    price_asc: { price: "asc" },
+    price_desc: { price: "desc" },
   };
 
   const [properties, totalCount] = await Promise.all([
@@ -97,7 +97,7 @@ async function getInitialProperties(sp: Record<string, string | string[] | undef
     properties: properties.map((p) => ({
       ...p,
       ownerId: p.ownerId ?? undefined,
-      owner:   p.owner   ?? undefined,
+      owner: p.owner ?? undefined,
     })),
     totalCount,
     totalPages: Math.ceil(totalCount / limit),
@@ -106,7 +106,7 @@ async function getInitialProperties(sp: Record<string, string | string[] | undef
 }
 
 export default async function PropertiesPage({ searchParams }: PropertiesPageProps) {
-  const sp      = await searchParams;
+  const sp = await searchParams;
   const initial = await getInitialProperties(sp);
 
   return (

@@ -83,7 +83,7 @@ export async function POST(req: Request) {
   }
 }
 
-// GET /api/properties — Fetch all properties with optional basic filters
+// GET /api/properties — Fetch properties with optional basic filters (paginated)
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -93,6 +93,8 @@ export async function GET(req: Request) {
     const listType    = searchParams.get("listingType");
     const subcategory = searchParams.get("subcategory");
     const ownerId     = searchParams.get("ownerId");
+    const page        = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit       = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
 
     const where: Prisma.PropertyWhereInput = {};
     if (area)        where.area         = { contains: area, mode: "insensitive" };
@@ -101,17 +103,27 @@ export async function GET(req: Request) {
     if (subcategory) where.subcategory  = subcategory;
     if (ownerId)     where.ownerId      = ownerId;
 
-    const properties = await db.property.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      include: {
-        owner: {
-          select: { name: true, phone: true, profileImage: true, image: true },
+    const [properties, totalCount] = await Promise.all([
+      db.property.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          owner: {
+            select: { name: true, phone: true, profileImage: true, image: true },
+          },
         },
-      },
-    });
+      }),
+      db.property.count({ where }),
+    ]);
 
-    return NextResponse.json(properties);
+    return NextResponse.json({
+      properties,
+      totalCount,
+      page,
+      totalPages: Math.ceil(totalCount / limit),
+    });
   } catch (err: unknown) {
     const error = err as Error;
     return NextResponse.json(

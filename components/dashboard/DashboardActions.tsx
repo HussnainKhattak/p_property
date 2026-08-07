@@ -69,7 +69,7 @@ export default function DashboardActions({
       const target = (e instanceof TouchEvent ? e.touches[0]?.target : e.target) as Node | null;
       if (!target) return;
       const clickedInsideButton = buttonRef.current?.contains(target);
-      const clickedInsideMenu   = menuRef.current?.contains(target);
+      const clickedInsideMenu = menuRef.current?.contains(target);
       if (!clickedInsideButton && !clickedInsideMenu) {
         dbg("Menu closed (outside tap/click)");
         setMenuOpen(false);

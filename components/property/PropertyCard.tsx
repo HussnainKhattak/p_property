@@ -6,6 +6,7 @@ import { Bed, Bath, Maximize, MapPin, Building, Eye, Heart } from "lucide-react"
 import { useSession } from "next-auth/react";
 import SavePropertyButton from "./SavePropertyButton";
 import LazyImage from "@/components/ui/LazyImage";
+import AvatarZoom from "@/components/ui/AvatarZoom";
 import DashboardActions from "../dashboard/DashboardActions";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -57,14 +58,11 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
   const router = useRouter();
   const [localStatus, setLocalStatus] = useState(property.status);
 
-  // Called by DashboardActions AFTER it has already successfully updated the DB.
-  // We just apply the optimistic UI update and refresh SSR caches.
   const handleStatusChange = (propertyId: string, newStatus: string) => {
     setLocalStatus(newStatus as Property["status"]);
-    router.refresh(); // re-fetches server pages so home & /properties reflect the change
+    router.refresh();
   };
 
-  // Called by DashboardActions AFTER it has already successfully deleted from DB.
   const handleDelete = (propertyId: string) => {
     router.refresh();
   };
@@ -89,39 +87,48 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
       className="group flex flex-col rounded-2xl border border-border bg-card overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300"
       whileHover={{ y: -4, transition: { duration: 0.22 } }}
     >
-      {/* Property Image */}
-      <div className="relative h-56 w-full overflow-hidden bg-muted">
-        <LazyImage
-          src={mainImage}
-          alt={property.title}
-          className="h-full w-full object-cover"
-          wrapperClassName="h-full w-full"
-        />
+      {/*
+        Image section — padding-top percentage trick guarantees the container
+        height is always exactly 56.25% of the card's own width (= 16:9).
+        On a 360px-wide mobile card this = ~203px. The inner absolute div
+        fills the space so LazyImage renders correctly inside it.
+      */}
+      <div className="relative w-full overflow-hidden bg-muted" style={{ paddingTop: "56.25%" }}>
+        {/* Fills the padding-top space */}
+        <div className="absolute inset-0">
+          <LazyImage
+            src={mainImage}
+            alt={property.title}
+            className="h-full w-full object-cover object-center"
+            wrapperClassName="h-full w-full"
+          />
+        </div>
 
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
 
         {/* Listing type & property type badges */}
-        <div className="absolute top-3 left-3 flex gap-2">
+        <div className="absolute top-2 left-2 flex gap-1.5 sm:top-3 sm:left-3 sm:gap-2">
           <motion.span
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3 + (index % 6) * 0.08 }}
-            className="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-primary text-primary-foreground shadow-sm"
+            className="px-2 py-0.5 sm:px-3 sm:py-1 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-primary text-primary-foreground shadow-sm"
           >
             For {property.listingType === "SALE" ? "Sale" : "Rent"}
           </motion.span>
-          <span className="px-3 py-1 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/60 backdrop-blur-sm text-white shadow-sm">
+          <span className="px-2 py-0.5 sm:px-3 sm:py-1 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-black/60 backdrop-blur-sm text-white shadow-sm">
             {property.propertyType}
           </span>
         </div>
 
         {/* Wishlist button */}
-        <div className="absolute top-3 right-3 z-20">
+        <div className="absolute top-2 right-2 z-20 sm:top-3 sm:right-3">
           <SavePropertyButton propertyId={property.id} />
         </div>
+
         {isOwner && (
-          <div className="absolute bottom-3 right-3 z-20">
+          <div className="absolute bottom-2 right-2 z-20 sm:bottom-3 sm:right-3">
             <DashboardActions
               propertyId={property.id}
               status={localStatus}
@@ -132,8 +139,8 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
         )}
 
         {/* Status badge */}
-        <div className="absolute bottom-3 left-3">
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] uppercase font-bold tracking-wider backdrop-blur-md shadow-sm border ${
+        <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3">
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[9px] sm:text-[10px] uppercase font-bold tracking-wider backdrop-blur-md shadow-sm border ${
             localStatus === "AVAILABLE"
               ? "bg-emerald-500/20 text-emerald-100 border-emerald-400/30"
               : localStatus === "BOOKED"
@@ -142,7 +149,7 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
                   ? "bg-orange-500/20 text-orange-100 border-orange-400/30"
                   : "bg-amber-500/20 text-amber-100 border-amber-400/30"
           }`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${
+            <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
               localStatus === "AVAILABLE" ? "bg-emerald-400 animate-pulse" :
               localStatus === "BOOKED" ? "bg-red-400" :
               localStatus === "SOLD" ? "bg-orange-400" :
@@ -153,97 +160,96 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-5 flex flex-col gap-4 flex-grow">
+      {/* Card content */}
+      <div className="p-3 sm:p-5 flex flex-col gap-2 sm:gap-3 flex-grow">
+
         {/* Price & Title */}
-        <div className="flex flex-col gap-1.5">
-          <div className="text-xl font-bold text-primary">
+        <div className="flex flex-col gap-0.5">
+          <div className="text-base sm:text-xl font-bold text-primary leading-tight">
             {formatPKR(property.price)}{" "}
             {property.listingType === "RENT" && (
               <span className="text-xs font-normal text-muted-foreground">/ month</span>
             )}
           </div>
-          <h3 className="font-bold text-base sm:text-lg line-clamp-1 group-hover:text-primary transition-colors duration-200">
+          <h3 className="font-semibold text-sm sm:text-base line-clamp-1 group-hover:text-primary transition-colors duration-200 leading-snug">
             {property.title}
           </h3>
         </div>
 
-        {/* Location */}
-        <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
-          <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+        {/* Location — single truncated line */}
+        <div className="flex items-center gap-1 text-muted-foreground text-xs min-w-0">
+          <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary flex-shrink-0" />
           <span className="truncate">
             {property.address}, {property.area}
           </span>
         </div>
 
-        {/* Specs */}
-        <div className="grid grid-cols-3 gap-2 py-3 border-t border-b border-border/60 text-xs font-medium text-muted-foreground">
+        {/* Specs row */}
+        <div className="grid grid-cols-3 gap-1 py-1.5 sm:py-2.5 border-t border-b border-border/60 text-[10px] sm:text-xs font-medium text-muted-foreground">
           {property.propertyType !== "PLOT" ? (
             <>
-              <div className="flex items-center justify-center gap-1.5">
-                <Bed className="h-4 w-4 text-primary" />
+              <div className="flex items-center justify-center gap-1">
+                <Bed className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary" />
                 <span>{property.bedrooms ?? 0} Bed</span>
               </div>
-              <div className="flex items-center justify-center gap-1.5">
-                <Bath className="h-4 w-4 text-primary" />
+              <div className="flex items-center justify-center gap-1">
+                <Bath className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary" />
                 <span>{property.bathrooms ?? 0} Bath</span>
               </div>
             </>
           ) : (
-            <div className="col-span-2 flex items-center justify-start gap-1.5 pl-2">
-              <Building className="h-4 w-4 text-primary" />
-              <span>Plot Land Space</span>
+            <div className="col-span-2 flex items-center justify-start gap-1 pl-1">
+              <Building className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary" />
+              <span>Plot Land</span>
             </div>
           )}
-          <div className="flex items-center justify-center gap-1.5 border-l border-border/60">
-            <Maximize className="h-4 w-4 text-primary" />
+          <div className="flex items-center justify-center gap-1 border-l border-border/60">
+            <Maximize className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary" />
             <span>{formatArea(property.marla)}</span>
           </div>
         </div>
 
-        {/* View & Save counts - only visible to the property owner */}
+        {/* View & Save counts — owner only */}
         {isOwner && (
-          <div className="flex items-center gap-3 text-[10px] font-bold py-1 px-2 rounded bg-accent/40 w-fit">
-            <span className="flex items-center gap-1 text-emerald-500">
-              <Eye className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2 text-[9px] sm:text-[10px] font-bold py-0.5 px-1.5 rounded bg-accent/40 w-fit">
+            <span className="flex items-center gap-0.5 text-emerald-500">
+              <Eye className="h-3 w-3" />
               {property.views ?? 0} Views
             </span>
-            <span className="h-3 w-px bg-border/60" />
-            <span className="flex items-center gap-1 text-rose-500">
-              <Heart className="h-3.5 w-3.5 fill-rose-500 text-rose-500" />
+            <span className="h-2.5 w-px bg-border/60" />
+            <span className="flex items-center gap-0.5 text-rose-500">
+              <Heart className="h-3 w-3 fill-rose-500 text-rose-500" />
               {property.favoritesCount ?? 0} Saves
             </span>
           </div>
         )}
 
-        {/* Footer: owner + CTA */}
-        <div className="flex items-center justify-between gap-4 mt-1">
+        {/* Footer: agent avatar + name on left, View Details button on right — one row, never wraps */}
+        <div className="flex items-center justify-between gap-2 mt-auto pt-0.5">
           {property.owner ? (
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-full bg-accent flex items-center justify-center font-bold text-xs overflow-hidden">
-                {property.owner.profileImage || property.owner.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={property.owner.profileImage || property.owner.image || ""}
-                    alt={property.owner.name || "Owner"}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  property.owner.name?.[0]?.toUpperCase() || "O"
-                )}
-              </div>
-              <span className="text-xs text-muted-foreground font-medium truncate max-w-[100px]">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <AvatarZoom
+                src={property.owner.profileImage || property.owner.image}
+                alt={property.owner.name || "Owner"}
+                size={24}
+                zoomedSize={160}
+                fallback={property.owner.name?.[0]?.toUpperCase() || "O"}
+                className="bg-accent text-foreground text-[10px]"
+              />
+              <span className="text-[10px] sm:text-xs text-muted-foreground font-medium truncate">
                 {property.owner.name}
               </span>
             </div>
           ) : (
-            <div className="text-xs text-muted-foreground">Peshawar Property Hub</div>
+            <div className="text-[10px] sm:text-xs text-muted-foreground truncate flex-1">
+              Peshawar Property Hub
+            </div>
           )}
 
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }} className="flex-shrink-0">
             <Link
               href={`/properties/${property.id}`}
-              className="text-xs font-semibold px-3.5 py-2 rounded-xl bg-accent text-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300"
+              className="text-[10px] sm:text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-lg bg-accent text-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300 whitespace-nowrap"
             >
               View Details
             </Link>

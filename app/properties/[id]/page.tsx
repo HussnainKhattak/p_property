@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+import AvatarZoom from "@/components/ui/AvatarZoom";
 import { 
   Building, 
   MapPin, 
@@ -304,14 +306,17 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
 
             {/* Featured Large Image Panel */}
             <div className="flex flex-col gap-3">
+              {/* Main hero image — priority load (above fold), fill to parent, WebP/AVIF via next/image */}
               <div className="relative h-[300px] sm:h-[450px] w-full overflow-hidden rounded-3xl border border-border/80 shadow-md bg-muted">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={mainImage}
                   alt={property.title}
-                  className="h-full w-full object-cover"
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 66vw, 800px"
+                  className="object-cover"
                 />
-                <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5">
+                <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 z-10">
                   <Sparkles className="h-3.5 w-3.5 text-primary" /> Real Elevation Photo
                 </div>
               </div>
@@ -321,8 +326,14 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                   {allImages.map((img, idx) => (
                     <div key={idx} className="relative h-16 rounded-xl overflow-hidden border border-border bg-muted">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img} alt={`${property.title} gallery thumbnail ${idx + 1}`} className="h-full w-full object-cover" />
+                      <Image
+                        src={img}
+                        alt={`${property.title} photo ${idx + 1}`}
+                        fill
+                        loading="lazy"
+                        sizes="120px"
+                        className="object-cover"
+                      />
                     </div>
                   ))}
                 </div>
@@ -403,18 +414,14 @@ export default async function PropertyDetailsPage({ params }: PropertyDetailsPag
               </h3>
               
               <div className="relative flex flex-col items-center gap-3">
-                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold ring-4 ring-primary/20 overflow-hidden">
-                  {property.owner?.profileImage || property.owner?.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={property.owner?.profileImage || property.owner?.image || ""}
-                      alt={property.owner?.name || "Owner"}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    property.owner?.name?.[0]?.toUpperCase() || "O"
-                  )}
-                </div>
+                <AvatarZoom
+                  src={property.owner?.profileImage || property.owner?.image}
+                  alt={property.owner?.name || "Owner"}
+                  size={64}
+                  zoomedSize={220}
+                  fallback={property.owner?.name?.[0]?.toUpperCase() || "O"}
+                  className="ring-4 ring-primary/20 bg-primary/10 text-primary text-xl font-bold"
+                />
                 <div>
                   <h4 className="font-bold text-base text-foreground">
                     {property.owner?.name || "Peshawar Property Seller"}

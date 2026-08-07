@@ -24,11 +24,16 @@ import {
   Map,
 } from "lucide-react";
 
+// Module-level cache so counts survive route changes without re-fetching
+// (shared across all renders in the same browser session)
+let _countsCache: Record<string, number> | null = null;
+let _countsCacheTime = 0;
+
 function NavbarContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, mounted } = useTheme();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -45,10 +50,18 @@ function NavbarContent() {
   }>({});
 
   const fetchCategoryCounts = async () => {
+    // Client-side cache: skip the network call if data was fetched within 60 seconds
+    const now = Date.now();
+    if (_countsCache && now - _countsCacheTime < 60_000) {
+      setCategoryCounts(_countsCache);
+      return;
+    }
     try {
       const res = await fetch("/api/properties/counts");
       if (res.ok) {
         const data = await res.json();
+        _countsCache = data;
+        _countsCacheTime = now;
         setCategoryCounts(data);
       }
     } catch (err) {
@@ -197,9 +210,8 @@ function NavbarContent() {
                     transition={{ duration: 0.18, ease: "easeOut" }}
                     className="absolute left-0 mt-1 w-80 rounded-2xl border border-border bg-card p-3 shadow-2xl z-50 backdrop-blur-xl"
                   >
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-3 py-1.5 mb-1 flex items-center justify-between border-b border-border/60">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-3 py-1.5 mb-1 border-b border-border/60">
                       <span>Filter Category</span>
-                      <span className="text-primary font-extrabold">{categoryCounts.ALL ?? 0} Listings</span>
                     </div>
 
                     <div className="space-y-1">
@@ -217,38 +229,27 @@ function NavbarContent() {
                             key={cat.key}
                             href={cat.href}
                             onClick={() => setPropertiesDropdownOpen(false)}
-                            className={`flex items-center justify-between p-2.5 rounded-xl transition-all duration-200 group ${
+                            className={`flex items-center gap-3 p-2.5 rounded-xl transition-all duration-200 group ${
                               isActive
                                 ? "bg-primary/10 text-primary font-semibold"
                                 : "hover:bg-accent text-foreground"
                             }`}
                           >
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`p-2 rounded-lg ${
-                                  isActive
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-accent group-hover:bg-primary/10 group-hover:text-primary transition-colors"
-                                }`}
-                              >
-                                <Icon className="h-4 w-4" />
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium leading-none">{cat.name}</div>
-                                <div className="text-[11px] text-muted-foreground mt-1 font-normal">
-                                  {cat.description}
-                                </div>
-                              </div>
-                            </div>
-                            <span
-                              className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            <div
+                              className={`p-2 rounded-lg ${
                                 isActive
                                   ? "bg-primary text-primary-foreground"
-                                  : "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary transition-colors"
+                                  : "bg-accent group-hover:bg-primary/10 group-hover:text-primary transition-colors"
                               }`}
                             >
-                              ({count})
-                            </span>
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium leading-none">{cat.name}</div>
+                              <div className="text-[11px] text-muted-foreground mt-1 font-normal">
+                                {cat.description}
+                              </div>
+                            </div>
                           </Link>
                         );
                       })}
@@ -294,8 +295,9 @@ function NavbarContent() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
+              {/* Render nothing until mounted to prevent SSR/client icon mismatch */}
               <AnimatePresence mode="wait" initial={false}>
-                {theme === "dark" ? (
+                {mounted && (theme === "dark" ? (
                   <motion.div
                     key="sun"
                     initial={{ rotate: -90, opacity: 0 }}
@@ -314,6 +316,11 @@ function NavbarContent() {
                     transition={{ duration: 0.2 }}
                   >
                     <Moon className="h-5 w-5 text-slate-600" />
+                  </motion.div>
+                ))}
+                {!mounted && (
+                  <motion.div key="placeholder">
+                    <div className="h-5 w-5" />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -405,15 +412,19 @@ function NavbarContent() {
               aria-label="Toggle Theme"
               whileTap={{ scale: 0.9 }}
             >
-              {theme === "dark" ? <Sun className="h-5 w-5 text-amber-400" /> : <Moon className="h-5 w-5 text-slate-600" />}
+              {/* Same mounted guard as desktop — no icon until theme is known client-side */}
+              {!mounted
+                ? <div className="h-5 w-5" />
+                : theme === "dark"
+                  ? <Sun className="h-5 w-5 text-amber-400" />
+                  : <Moon className="h-5 w-5 text-slate-600" />
+              }
             </motion.button>
             <motion.button
               onClick={() => {
-                const nextOpen = !isOpen;
-                setIsOpen(nextOpen);
-                // Auto-expand properties accordion when drawer opens
-                if (nextOpen) setMobilePropertiesOpen(true);
-                else setMobilePropertiesOpen(false);
+                setIsOpen((prev) => !prev);
+                // Reset sub-accordion on every toggle so it starts collapsed
+                setMobilePropertiesOpen(false);
               }}
               className="p-2 rounded-xl border border-border hover:bg-accent text-foreground"
               whileTap={{ scale: 0.9 }}
@@ -455,6 +466,7 @@ function NavbarContent() {
             >
               <Link
                 href="/"
+                onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-colors ${
                   pathname === "/" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
@@ -476,9 +488,6 @@ function NavbarContent() {
                     <span>Properties</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                      {categoryCounts.ALL ?? 0}
-                    </span>
                     <ChevronDown
                       className={`h-4 w-4 transition-transform duration-200 ${
                         mobilePropertiesOpen ? "rotate-180 text-primary" : "text-muted-foreground"
@@ -512,25 +521,18 @@ function NavbarContent() {
                               setIsOpen(false);
                               setMobilePropertiesOpen(false);
                             }}
-                            className={`flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium transition-colors ${
+                            className={`flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm font-medium transition-colors ${
                               isActive
                                 ? "bg-primary/10 text-primary font-semibold"
                                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
                             }`}
                           >
-                            <div className="flex items-center gap-2.5">
-                              <div className={`p-1.5 rounded-lg ${
-                                isActive ? "bg-primary text-primary-foreground" : "bg-muted"
-                              }`}>
-                                <Icon className="h-3.5 w-3.5" />
-                              </div>
-                              <span>{cat.name}</span>
-                            </div>
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                              isActive ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                            <div className={`p-1.5 rounded-lg ${
+                              isActive ? "bg-primary text-primary-foreground" : "bg-muted"
                             }`}>
-                              {count}
-                            </span>
+                              <Icon className="h-3.5 w-3.5" />
+                            </div>
+                            <span>{cat.name}</span>
                           </Link>
                         );
                       })}
@@ -550,6 +552,7 @@ function NavbarContent() {
                   >
                     <Link
                       href={link.href}
+                      onClick={() => setIsOpen(false)}
                       className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-colors ${
                         isActive
                           ? "bg-primary/10 text-primary"
@@ -583,15 +586,15 @@ function NavbarContent() {
                   </div>
 
                   {session.user.role === "ADMIN" && (
-                    <Link href="/admin" className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-base font-bold text-red-500 hover:bg-red-500/10 transition-colors">
+                    <Link href="/admin" onClick={() => setIsOpen(false)} className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-base font-bold text-red-500 hover:bg-red-500/10 transition-colors">
                       <User className="h-5 w-5 text-red-500" /> Admin Panel
                     </Link>
                   )}
-                  <Link href="/dashboard" className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+                  <Link href="/dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-base font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
                     <User className="h-5 w-5" /> Dashboard
                   </Link>
                   <button
-                    onClick={() => signOut({ callbackUrl: "/" })}
+                    onClick={() => { signOut({ callbackUrl: "/" }); setIsOpen(false); }}
                     className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-base font-medium text-red-500 hover:bg-red-500/10 transition-colors"
                   >
                     <LogOut className="h-5 w-5" /> Sign Out
@@ -599,10 +602,10 @@ function NavbarContent() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2 px-3">
-                  <Link href="/login" className="w-full py-3 text-center rounded-xl font-medium border border-border text-foreground hover:bg-accent transition-colors">
+                  <Link href="/login" onClick={() => setIsOpen(false)} className="w-full py-3 text-center rounded-xl font-medium border border-border text-foreground hover:bg-accent transition-colors">
                     Login
                   </Link>
-                  <Link href="/register" className="w-full py-3 text-center rounded-xl font-medium bg-primary text-primary-foreground hover:bg-primary/95 transition-colors">
+                  <Link href="/register" onClick={() => setIsOpen(false)} className="w-full py-3 text-center rounded-xl font-medium bg-primary text-primary-foreground hover:bg-primary/95 transition-colors">
                     Register
                   </Link>
                 </div>

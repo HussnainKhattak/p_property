@@ -8,23 +8,24 @@ type Theme = "dark" | "light";
 type ThemeContextType = {
   theme: Theme;
   toggleTheme: () => void;
+  /** false during SSR and initial hydration — use to avoid icon mismatches */
+  mounted: boolean;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark"); // Default is Professional Dark
+  // Static default that matches the server — do NOT read localStorage here
+  const [theme, setTheme] = useState<Theme>("dark");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Read theme from localStorage or default to dark
+    // Runs only on the client, after hydration — safe to read localStorage
     const savedTheme = localStorage.getItem("theme") as Theme | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle("dark", savedTheme === "dark");
-    } else {
-      setTheme("dark");
-      document.documentElement.classList.add("dark");
-    }
+    const resolvedTheme: Theme = savedTheme === "light" ? "light" : "dark";
+    setTheme(resolvedTheme);
+    document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
+    setMounted(true);
   }, []);
 
   const toggleTheme = () => {
@@ -35,7 +36,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, mounted }}>
       {children}
     </ThemeContext.Provider>
   );

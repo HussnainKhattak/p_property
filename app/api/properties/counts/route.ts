@@ -26,7 +26,9 @@ export async function GET() {
 
     return NextResponse.json(counts, {
       headers: {
-        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+        // Cache for 5 min at CDN/browser; serve stale for up to 10 min while revalidating.
+        // Counts change rarely — this eliminates the DB round-trip for repeated navigations.
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
       },
     });
   } catch (err: unknown) {

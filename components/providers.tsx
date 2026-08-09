@@ -15,14 +15,14 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Static default that matches the server — do NOT read localStorage here
-  const [theme, setTheme] = useState<Theme>("dark");
+  // Static default is Light theme
+  const [theme, setTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     // Runs only on the client, after hydration — safe to read localStorage
     const savedTheme = localStorage.getItem("theme") as Theme | null;
-    const resolvedTheme: Theme = savedTheme === "light" ? "light" : "dark";
+    const resolvedTheme: Theme = savedTheme === "dark" ? "dark" : "light";
     setTheme(resolvedTheme);
     document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
     setMounted(true);

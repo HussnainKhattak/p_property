@@ -76,8 +76,8 @@ export function buildQueryWhereConditions(
     ? rawListType.toUpperCase() === "BUY" || rawListType.toUpperCase() === "SALE"
       ? "SALE"
       : rawListType.toUpperCase() === "RENT"
-      ? "RENT"
-      : undefined
+        ? "RENT"
+        : undefined
     : parsed.detectedListingType;
 
   // Filter out intent words if they are already handled by explicit enum filters

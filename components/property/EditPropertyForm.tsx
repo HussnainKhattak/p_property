@@ -272,23 +272,25 @@ export default function EditPropertyForm({ property }: EditPropertyFormProps) {
             {/* Area */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="area" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Area Sector
+                Area Sector <span className="text-red-500">*</span>
               </label>
-              <select
+              <input
                 id="area"
                 name="area"
+                type="text"
+                list="edit-area-suggestions"
                 required
+                minLength={3}
                 value={form.area}
                 onChange={handleChange}
+                placeholder="e.g. Saddar Bazar, Old Bara Road, Hayatabad..."
                 className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
-              >
-                <option value="">Select Locality</option>
+              />
+              <datalist id="edit-area-suggestions">
                 {locations.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc}
-                  </option>
+                  <option key={loc} value={loc} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             {/* Address */}

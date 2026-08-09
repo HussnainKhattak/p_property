@@ -91,6 +91,11 @@ const LOCATIONS = [
   "University Town",
   "Dalazak Road",
   "Ring Road",
+  "Charsadda Road",
+  "Peshawar Cantt",
+  "Saddar Bazar",
+  "Gulberg",
+  "G.T. Road",
 ];
 
 // ─── Main Component ────────────────────────────────────────────────────────────
@@ -633,19 +638,27 @@ export default function AddPropertyPage() {
                 <label htmlFor="area" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   Area / Sector <span className="text-red-500">*</span>
                 </label>
-                <select
+                <input
                   id="area"
                   name="area"
+                  type="text"
+                  list="area-suggestions"
                   required
+                  minLength={3}
                   value={form.area}
                   onChange={handleChange}
+                  placeholder={
+                    selectedType === "SHOP"
+                      ? "e.g. Saddar Bazar, Old Bara Road, Deans Plaza..."
+                      : "e.g. Phase 3 Hayatabad, DHA Phase 1..."
+                  }
                   className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
-                >
-                  <option value="">Select Locality</option>
+                />
+                <datalist id="area-suggestions">
                   {LOCATIONS.map((loc) => (
-                    <option key={loc} value={loc}>{loc}</option>
+                    <option key={loc} value={loc} />
                   ))}
-                </select>
+                </datalist>
               </div>
 
               {/* Address */}

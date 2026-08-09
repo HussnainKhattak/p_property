@@ -36,36 +36,49 @@ async function getInitialProperties(sp: Record<string, string | string[] | undef
   const page = parseInt(get("page") || "1");
   const limit = 12;
 
+  const parsedMinPrice = minPrice && !isNaN(parseFloat(minPrice)) ? parseFloat(minPrice) : undefined;
+  const parsedMaxPrice = maxPrice && !isNaN(parseFloat(maxPrice)) ? parseFloat(maxPrice) : undefined;
+  const parsedMinMarla = minMarla && !isNaN(parseFloat(minMarla)) ? parseFloat(minMarla) : undefined;
+  const parsedMaxMarla = maxMarla && !isNaN(parseFloat(maxMarla)) ? parseFloat(maxMarla) : undefined;
+
+  const areaKeywords = area
+    ? Array.from(new Set([
+        area,
+        ...area.split(" ").filter((w) => w.length > 2 && w.toLowerCase() !== "peshawar" && w.toLowerCase() !== "road")
+      ]))
+    : [];
+
   const where: Prisma.PropertyWhereInput = {
     AND: [
       query
         ? {
-          OR: [
-            { title: { contains: query, mode: "insensitive" } },
-            { description: { contains: query, mode: "insensitive" } },
-            { area: { contains: query, mode: "insensitive" } },
-            { address: { contains: query, mode: "insensitive" } },
-            { city: { contains: query, mode: "insensitive" } },
-          ],
-        }
+            OR: [
+              { title:       { contains: query, mode: "insensitive" } },
+              { description: { contains: query, mode: "insensitive" } },
+              { area:        { contains: query, mode: "insensitive" } },
+              { address:     { contains: query, mode: "insensitive" } },
+              { city:        { contains: query, mode: "insensitive" } },
+            ],
+          }
         : {},
       city ? { city: { contains: city, mode: "insensitive" } } : {},
-      area
+      areaKeywords.length > 0
         ? {
-          OR: [
-            { area: { contains: area, mode: "insensitive" } },
-            { address: { contains: area, mode: "insensitive" } },
-            { city: { contains: area, mode: "insensitive" } },
-          ],
-        }
+            OR: areaKeywords.flatMap((kw) => [
+              { area:    { contains: kw, mode: "insensitive" } },
+              { address: { contains: kw, mode: "insensitive" } },
+              { city:    { contains: kw, mode: "insensitive" } },
+              { title:   { contains: kw, mode: "insensitive" } },
+            ]),
+          }
         : {},
       propType ? { propertyType: propType } : {},
       normalizedListType ? { listingType: normalizedListType as Prisma.EnumListingTypeFilter["equals"] } : {},
       subcategory ? { subcategory: subcategory } : {},
-      minPrice ? { price: { gte: parseFloat(minPrice) } } : {},
-      maxPrice ? { price: { lte: parseFloat(maxPrice) } } : {},
-      minMarla ? { marla: { gte: parseFloat(minMarla) } } : {},
-      maxMarla ? { marla: { lte: parseFloat(maxMarla) } } : {},
+      parsedMinPrice !== undefined ? { price: { gte: parsedMinPrice } } : {},
+      parsedMaxPrice !== undefined ? { price: { lte: parsedMaxPrice } } : {},
+      parsedMinMarla !== undefined ? { marla: { gte: parsedMinMarla } } : {},
+      parsedMaxMarla !== undefined ? { marla: { lte: parsedMaxMarla } } : {},
       bedrooms ? { bedrooms: { gte: parseInt(bedrooms) } } : {},
       bathrooms ? { bathrooms: { gte: parseInt(bathrooms) } } : {},
     ],

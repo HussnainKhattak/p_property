@@ -32,6 +32,19 @@ export async function GET(req: Request) {
     const page        = parseInt(searchParams.get("page")  || "1");
     const limit       = parseInt(searchParams.get("limit") || "12");
 
+    const parsedMinPrice = minPrice && !isNaN(parseFloat(minPrice)) ? parseFloat(minPrice) : undefined;
+    const parsedMaxPrice = maxPrice && !isNaN(parseFloat(maxPrice)) ? parseFloat(maxPrice) : undefined;
+    const parsedMinMarla = minMarla && !isNaN(parseFloat(minMarla)) ? parseFloat(minMarla) : undefined;
+    const parsedMaxMarla = maxMarla && !isNaN(parseFloat(maxMarla)) ? parseFloat(maxMarla) : undefined;
+
+    // Helper for location/area search to match full term or core keywords (e.g. DHA, Hayatabad, Regi)
+    const areaKeywords = area
+      ? Array.from(new Set([
+          area,
+          ...area.split(" ").filter((w) => w.length > 2 && w.toLowerCase() !== "peshawar" && w.toLowerCase() !== "road")
+        ]))
+      : [];
+
     // Build MongoDB-compatible where clause
     const where: Prisma.PropertyWhereInput = {
       AND: [
@@ -47,24 +60,25 @@ export async function GET(req: Request) {
             }
           : {},
         city ? { city: { contains: city, mode: "insensitive" } } : {},
-        area
+        areaKeywords.length > 0
           ? {
-              OR: [
-                { area:    { contains: area, mode: "insensitive" } },
-                { address: { contains: area, mode: "insensitive" } },
-                { city:    { contains: area, mode: "insensitive" } },
-              ],
+              OR: areaKeywords.flatMap((kw) => [
+                { area:    { contains: kw, mode: "insensitive" } },
+                { address: { contains: kw, mode: "insensitive" } },
+                { city:    { contains: kw, mode: "insensitive" } },
+                { title:   { contains: kw, mode: "insensitive" } },
+              ]),
             }
           : {},
         propType           ? { propertyType: propType }                      : {},
         normalizedListType ? { listingType:  normalizedListType as ListingType } : {},
         subcategory        ? { subcategory:  subcategory }                    : {},
-        minPrice           ? { price: { gte: parseFloat(minPrice) } }        : {},
-        maxPrice           ? { price: { lte: parseFloat(maxPrice) } }        : {},
-        minMarla           ? { marla: { gte: parseFloat(minMarla) } }        : {},
-        maxMarla           ? { marla: { lte: parseFloat(maxMarla) } }        : {},
-        bedrooms           ? { bedrooms:  { gte: parseInt(bedrooms)  } }    : {},
-        bathrooms          ? { bathrooms: { gte: parseInt(bathrooms) } }    : {},
+        parsedMinPrice !== undefined ? { price: { gte: parsedMinPrice } }     : {},
+        parsedMaxPrice !== undefined ? { price: { lte: parsedMaxPrice } }     : {},
+        parsedMinMarla !== undefined ? { marla: { gte: parsedMinMarla } }     : {},
+        parsedMaxMarla !== undefined ? { marla: { lte: parsedMaxMarla } }     : {},
+        bedrooms           ? { bedrooms:  { gte: parseInt(bedrooms)  } }      : {},
+        bathrooms          ? { bathrooms: { gte: parseInt(bathrooms) } }      : {},
       ],
     };
 

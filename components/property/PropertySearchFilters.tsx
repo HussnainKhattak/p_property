@@ -29,7 +29,16 @@ export const DEFAULT_FILTERS: SearchFilters = {
 
 const AREAS = [
   "DHA Peshawar", "Hayatabad", "Regi Model Town", "Warsak Road",
-  "University Town", "Dalazak Road", "Ring Road",
+  "University Town", "Dalazak Road", "Ring Road", "Charsadda Road",
+  "Peshawar Cantt", "Gulberg", "G.T. Road",
+];
+
+const BUDGET_PRESETS = [
+  { label: "Any", min: "", max: "" },
+  { label: "< 50L", min: "0", max: "5000000" },
+  { label: "50L-1Cr", min: "5000000", max: "10000000" },
+  { label: "1Cr-3Cr", min: "10000000", max: "30000000" },
+  { label: "3Cr+", min: "30000000", max: "" },
 ];
 
 const PROPERTY_TYPES = [
@@ -221,19 +230,39 @@ export default function PropertySearchFilters({
         <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           Price Range (PKR)
         </label>
+        {/* Quick Budget Presets */}
+        <div className="grid grid-cols-5 gap-1 mb-1">
+          {BUDGET_PRESETS.map((p) => {
+            const isActive = filters.minPrice === p.min && filters.maxPrice === p.max;
+            return (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => onChange({ ...filters, minPrice: p.min, maxPrice: p.max })}
+                className={`py-1 rounded-lg text-[10px] font-bold transition-all ${
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-accent/40 text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <input
             type="number"
             value={filters.minPrice}
             onChange={set("minPrice")}
-            placeholder="Min price"
+            placeholder="Min price (PKR)"
             className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
           />
           <input
             type="number"
             value={filters.maxPrice}
             onChange={set("maxPrice")}
-            placeholder="Max price"
+            placeholder="Max price (PKR)"
             className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
           />
         </div>

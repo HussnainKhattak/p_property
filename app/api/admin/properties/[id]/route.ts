@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { checkAdminAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { isValidObjectId } from "@/lib/utils";
 
@@ -10,9 +10,9 @@ export async function PATCH(
 ) {
   try {
     const { id: propertyId } = await params;
-    const session = await auth();
+    const isAdmin = await checkAdminAuth();
 
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -49,9 +49,9 @@ export async function DELETE(
 ) {
   try {
     const { id: propertyId } = await params;
-    const session = await auth();
+    const isAdmin = await checkAdminAuth();
 
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 

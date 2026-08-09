@@ -32,6 +32,48 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
 
           const { email, password } = parsedCredentials.data;
+
+          // Check if credentials match environment ADMIN_EMAIL and ADMIN_PASSWORD
+          const adminEmail = process.env.ADMIN_EMAIL;
+          const adminPassword = process.env.ADMIN_PASSWORD;
+
+          if (
+            adminEmail &&
+            adminPassword &&
+            email.toLowerCase() === adminEmail.toLowerCase() &&
+            password === adminPassword
+          ) {
+            let adminUser = await db.user.findUnique({
+              where: { email: adminEmail },
+            });
+
+            if (!adminUser) {
+              const hashedPassword = await bcrypt.hash(adminPassword, 10);
+              adminUser = await db.user.create({
+                data: {
+                  name: "Admin Peshawar Property Hub",
+                  email: adminEmail,
+                  password: hashedPassword,
+                  role: Role.ADMIN,
+                },
+              });
+            } else if (adminUser.role !== Role.ADMIN) {
+              adminUser = await db.user.update({
+                where: { id: adminUser.id },
+                data: { role: Role.ADMIN },
+              });
+            }
+
+            console.log(`[Perf Audit] Admin authentication successful for ${adminEmail}`);
+            return {
+              id: adminUser.id,
+              name: adminUser.name,
+              email: adminUser.email,
+              image: adminUser.image,
+              role: adminUser.role,
+            };
+          }
+
           const user = await db.user.findUnique({
             where: { email },
             select: {
@@ -137,3 +179,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
+
+export async function checkAdminAuth() {
+  const session = await auth();
+  if (session?.user?.role === "ADMIN") return true;
+
+  try {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    return cookieStore.get("admin_session")?.value === "true";
+  } catch {
+    return false;
+  }
+}

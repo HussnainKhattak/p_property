@@ -95,7 +95,12 @@ export default function UserDashboardClient() {
         const propertiesRes = await fetch(listingsUrl);
         if (propertiesRes.ok) {
           const propertiesData = await propertiesRes.json();
-          setProperties(propertiesData);
+          const list = Array.isArray(propertiesData)
+            ? propertiesData
+            : Array.isArray(propertiesData?.properties)
+            ? propertiesData.properties
+            : [];
+          setProperties(list);
         }
       }
     } catch (err) {
@@ -115,7 +120,12 @@ export default function UserDashboardClient() {
       fetch("/api/saved-properties")
         .then((res) => (res.ok ? res.json() : []))
         .then((data) => {
-          setSavedProperties(data);
+          const list = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.properties)
+            ? data.properties
+            : [];
+          setSavedProperties(list);
           setFetchedSaved(true);
         })
         .catch(console.error);
@@ -130,7 +140,12 @@ export default function UserDashboardClient() {
         fetch(`/api/properties/search?limit=10`)
           .then((res) => (res.ok ? res.json() : { properties: [] }))
           .then((data) => {
-            const filtered = data.properties.filter((p: Property) => localRecentIds.includes(p.id));
+            const propList = Array.isArray(data)
+              ? data
+              : Array.isArray(data?.properties)
+              ? data.properties
+              : [];
+            const filtered = propList.filter((p: Property) => localRecentIds.includes(p.id));
             setRecentlyViewed(filtered);
             setFetchedRecent(true);
           })
@@ -302,18 +317,22 @@ export default function UserDashboardClient() {
     );
   }
 
-  const activeProperties = properties.filter((p) => p.status === "AVAILABLE");
+  const safeProperties = Array.isArray(properties) ? properties : [];
+  const safeSavedProperties = Array.isArray(savedProperties) ? savedProperties : [];
+  const safeRecentlyViewed = Array.isArray(recentlyViewed) ? recentlyViewed : [];
+
+  const activeProperties = safeProperties.filter((p) => p.status === "AVAILABLE");
 
   // Instant UI handlers for property management
   const handleStatusChange = (propertyId: string, newStatus: string) => {
     setProperties((prev) =>
-      prev.map((p) => (p.id === propertyId ? { ...p, status: newStatus } : p))
+      (Array.isArray(prev) ? prev : []).map((p) => (p.id === propertyId ? { ...p, status: newStatus } : p))
     );
     router.refresh(); // propagate to SSR home & /properties pages
   };
 
   const handlePropertyDelete = (propertyId: string) => {
-    setProperties((prev) => prev.filter((p) => p.id !== propertyId));
+    setProperties((prev) => (Array.isArray(prev) ? prev : []).filter((p) => p.id !== propertyId));
     router.refresh(); // propagate to SSR home & /properties pages
   };
 
@@ -334,15 +353,15 @@ export default function UserDashboardClient() {
   };
 
   // Aggregate Analytics Calculations
-  const totalPropertyViews = properties.reduce((acc, p) => acc + (p.views || 0), 0);
-  const totalPropertySaves = properties.reduce((acc, p) => acc + (p.favoritesCount || 0), 0);
+  const totalPropertyViews = safeProperties.reduce((acc, p) => acc + (p.views || 0), 0);
+  const totalPropertySaves = safeProperties.reduce((acc, p) => acc + (p.favoritesCount || 0), 0);
 
-  const mostViewedProperty = properties.length > 0
-    ? [...properties].sort((a, b) => (b.views || 0) - (a.views || 0))[0]
+  const mostViewedProperty = safeProperties.length > 0
+    ? [...safeProperties].sort((a, b) => (b.views || 0) - (a.views || 0))[0]
     : null;
 
-  const mostSavedProperty = properties.length > 0
-    ? [...properties].sort((a, b) => (b.favoritesCount || 0) - (a.favoritesCount || 0))[0]
+  const mostSavedProperty = safeProperties.length > 0
+    ? [...safeProperties].sort((a, b) => (b.favoritesCount || 0) - (a.favoritesCount || 0))[0]
     : null;
 
   return (

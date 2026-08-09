@@ -295,35 +295,34 @@ function NavbarContent() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
-              {/* Render nothing until mounted to prevent SSR/client icon mismatch */}
-              <AnimatePresence mode="wait" initial={false}>
-                {mounted && (theme === "dark" ? (
-                  <motion.div
-                    key="sun"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Sun className="h-5 w-5 text-amber-400" />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="moon"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Moon className="h-5 w-5 text-slate-600" />
-                  </motion.div>
-                ))}
-                {!mounted && (
-                  <motion.div key="placeholder">
-                    <div className="h-5 w-5" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {/* Render plain placeholder until mounted to avoid Framer Motion SSR presence mismatch */}
+              {!mounted ? (
+                <div className="h-5 w-5" />
+              ) : (
+                <AnimatePresence mode="wait" initial={false}>
+                  {theme === "dark" ? (
+                    <motion.div
+                      key="sun"
+                      initial={{ rotate: -90, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: 90, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Sun className="h-5 w-5 text-amber-400" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="moon"
+                      initial={{ rotate: 90, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: -90, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Moon className="h-5 w-5 text-slate-600" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              )}
             </motion.button>
 
             {/* Auth Section */}

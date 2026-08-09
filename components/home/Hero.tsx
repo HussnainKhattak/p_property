@@ -173,36 +173,39 @@ export default function Hero() {
   );
 
   return (
-    <section className="relative w-full min-h-[90vh] flex items-center justify-center py-20 overflow-hidden bg-zinc-950 text-white">
-      {/* Background Image */}
-      <motion.div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1600&q=80')`,
-        }}
-        initial={{ scale: 1.08 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 1.8, ease: "easeOut" }}
-      />
+    <section className="relative w-full min-h-[90vh] flex items-center justify-center py-20 bg-zinc-950 text-white">
+      {/* Background Container (overflow-hidden scoped to backgrounds only so dropdowns aren't clipped) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Background Image */}
+        <motion.div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: `url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1600&q=80')`,
+          }}
+          initial={{ scale: 1.08 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 1.8, ease: "easeOut" }}
+        />
 
-      {/* Gradient Overlays */}
-      <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/95 via-neutral-950/75 to-neutral-950/30" />
-      <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-transparent to-neutral-950/20" />
+        {/* Gradient Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/95 via-neutral-950/75 to-neutral-950/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-transparent to-neutral-950/20" />
 
-      {/* Dot-grid pattern */}
-      <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+        {/* Dot-grid pattern */}
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px]" />
 
-      {/* Floating decorative orbs */}
-      <motion.div
-        className="absolute top-20 right-1/4 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none"
-        animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
-        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute bottom-20 left-1/3 w-56 h-56 bg-emerald-500/8 rounded-full blur-3xl pointer-events-none"
-        animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.7, 0.4] }}
-        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-      />
+        {/* Floating decorative orbs */}
+        <motion.div
+          className="absolute top-20 right-1/4 w-72 h-72 bg-primary/10 rounded-full blur-3xl"
+          animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
+          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute bottom-20 left-1/3 w-56 h-56 bg-emerald-500/8 rounded-full blur-3xl"
+          animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.7, 0.4] }}
+          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+        />
+      </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -294,12 +297,12 @@ export default function Hero() {
             </div>
 
             {/* ───── Mobile View (Collapsible Dropdown with Click-Outside) ───── */}
-            <div ref={mobileSearchRef} className="block lg:hidden w-full relative z-30">
+            <div ref={mobileSearchRef} className="block lg:hidden w-full relative z-40">
               {/* Collapsed Trigger Bar */}
               <button
                 type="button"
                 onClick={() => setIsMobileSearchOpen((prev) => !prev)}
-                className="w-full flex items-center justify-between bg-black/70 backdrop-blur-xl border border-white/15 rounded-2xl p-4 shadow-xl text-left transition-all duration-300 active:scale-[0.99]"
+                className="w-full flex items-center justify-between bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-xl text-left transition-all duration-300 active:scale-[0.99]"
                 aria-expanded={isMobileSearchOpen}
                 aria-label="Toggle search filters"
               >
@@ -335,7 +338,7 @@ export default function Hero() {
                     animate={{ opacity: 1, y: 8, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.98 }}
                     transition={{ duration: 0.25, ease: "easeOut" }}
-                    className="absolute top-full left-0 right-0 z-50 bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-3xl p-5 shadow-2xl shadow-black/90 max-h-[75vh] overflow-y-auto"
+                    className="absolute top-full left-0 right-0 z-50 bg-zinc-950/98 backdrop-blur-2xl border border-white/20 rounded-3xl p-5 shadow-2xl shadow-black max-h-[75vh] overflow-y-auto mt-2"
                   >
                     <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
                       <span className="text-sm font-extrabold text-white">Filter Parameters</span>

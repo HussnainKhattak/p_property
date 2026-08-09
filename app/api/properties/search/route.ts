@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma, ListingType } from "@prisma/client";
-import { normalizePropertyType } from "@/lib/utils";
+import { buildQueryWhereConditions } from "@/lib/search";
 
 export async function GET(req: Request) {
   try {
@@ -15,15 +15,7 @@ export async function GET(req: Request) {
     const minMarla  = searchParams.get("minMarla")           || "";
     const maxMarla  = searchParams.get("maxMarla")           || "";
     const rawPropType = searchParams.get("propertyType")       || "";
-    const propType    = normalizePropertyType(rawPropType);
     const rawListType = searchParams.get("listingType")        || "";
-    const normalizedListType = rawListType
-      ? rawListType.toUpperCase() === "BUY" || rawListType.toUpperCase() === "SALE"
-        ? "SALE"
-        : rawListType.toUpperCase() === "RENT"
-        ? "RENT"
-        : undefined
-      : undefined;
 
     const subcategory = searchParams.get("subcategory")        || "";
     const bedrooms    = searchParams.get("bedrooms")           || "";
@@ -37,6 +29,9 @@ export async function GET(req: Request) {
     const parsedMinMarla = minMarla && !isNaN(parseFloat(minMarla)) ? parseFloat(minMarla) : undefined;
     const parsedMaxMarla = maxMarla && !isNaN(parseFloat(maxMarla)) ? parseFloat(maxMarla) : undefined;
 
+    // Use natural query builder to extract intent (rent/sale, house/apartment/etc.) and tokenized conditions
+    const { finalPropType, finalListType, tokenConditions } = buildQueryWhereConditions(query, rawPropType, rawListType);
+
     // Helper for location/area search to match full term or core keywords (e.g. DHA, Hayatabad, Regi)
     const areaKeywords = area
       ? Array.from(new Set([
@@ -48,17 +43,7 @@ export async function GET(req: Request) {
     // Build MongoDB-compatible where clause
     const where: Prisma.PropertyWhereInput = {
       AND: [
-        query
-          ? {
-              OR: [
-                { title:       { contains: query, mode: "insensitive" } },
-                { description: { contains: query, mode: "insensitive" } },
-                { area:        { contains: query, mode: "insensitive" } },
-                { address:     { contains: query, mode: "insensitive" } },
-                { city:        { contains: query, mode: "insensitive" } },
-              ],
-            }
-          : {},
+        ...tokenConditions,
         city ? { city: { contains: city, mode: "insensitive" } } : {},
         areaKeywords.length > 0
           ? {
@@ -70,8 +55,8 @@ export async function GET(req: Request) {
               ]),
             }
           : {},
-        propType           ? { propertyType: propType }                      : {},
-        normalizedListType ? { listingType:  normalizedListType as ListingType } : {},
+        finalPropType      ? { propertyType: finalPropType }                 : {},
+        finalListType      ? { listingType:  finalListType as ListingType }   : {},
         subcategory        ? { subcategory:  subcategory }                    : {},
         parsedMinPrice !== undefined ? { price: { gte: parsedMinPrice } }     : {},
         parsedMaxPrice !== undefined ? { price: { lte: parsedMaxPrice } }     : {},

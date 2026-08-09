@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import PropertiesClient from "@/components/property/PropertiesClient";
 import { Loader2 } from "lucide-react";
-import { normalizePropertyType } from "@/lib/utils";
+import { buildQueryWhereConditions } from "@/lib/search";
 
 interface PropertiesPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -20,15 +20,7 @@ async function getInitialProperties(sp: Record<string, string | string[] | undef
   const minMarla = get("minMarla");
   const maxMarla = get("maxMarla");
   const rawPropType = get("propertyType");
-  const propType = normalizePropertyType(rawPropType);
   const rawListType = get("listingType");
-  const normalizedListType = rawListType
-    ? rawListType.toUpperCase() === "BUY" || rawListType.toUpperCase() === "SALE"
-      ? "SALE"
-      : rawListType.toUpperCase() === "RENT"
-        ? "RENT"
-        : undefined
-    : undefined;
   const subcategory = get("subcategory");
   const bedrooms = get("bedrooms");
   const bathrooms = get("bathrooms");
@@ -41,6 +33,9 @@ async function getInitialProperties(sp: Record<string, string | string[] | undef
   const parsedMinMarla = minMarla && !isNaN(parseFloat(minMarla)) ? parseFloat(minMarla) : undefined;
   const parsedMaxMarla = maxMarla && !isNaN(parseFloat(maxMarla)) ? parseFloat(maxMarla) : undefined;
 
+  // Use natural query builder to extract intent (rent/sale, house/apartment/etc.) and tokenized conditions
+  const { finalPropType, finalListType, tokenConditions } = buildQueryWhereConditions(query, rawPropType, rawListType);
+
   const areaKeywords = area
     ? Array.from(new Set([
         area,
@@ -50,17 +45,7 @@ async function getInitialProperties(sp: Record<string, string | string[] | undef
 
   const where: Prisma.PropertyWhereInput = {
     AND: [
-      query
-        ? {
-            OR: [
-              { title:       { contains: query, mode: "insensitive" } },
-              { description: { contains: query, mode: "insensitive" } },
-              { area:        { contains: query, mode: "insensitive" } },
-              { address:     { contains: query, mode: "insensitive" } },
-              { city:        { contains: query, mode: "insensitive" } },
-            ],
-          }
-        : {},
+      ...tokenConditions,
       city ? { city: { contains: city, mode: "insensitive" } } : {},
       areaKeywords.length > 0
         ? {
@@ -72,8 +57,8 @@ async function getInitialProperties(sp: Record<string, string | string[] | undef
             ]),
           }
         : {},
-      propType ? { propertyType: propType } : {},
-      normalizedListType ? { listingType: normalizedListType as Prisma.EnumListingTypeFilter["equals"] } : {},
+      finalPropType ? { propertyType: finalPropType } : {},
+      finalListType ? { listingType: finalListType as Prisma.EnumListingTypeFilter["equals"] } : {},
       subcategory ? { subcategory: subcategory } : {},
       parsedMinPrice !== undefined ? { price: { gte: parsedMinPrice } } : {},
       parsedMaxPrice !== undefined ? { price: { lte: parsedMaxPrice } } : {},

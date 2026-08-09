@@ -7,20 +7,39 @@ export const authConfig = {
     error: "/auth-error",
   },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth, request: { nextUrl, cookies } }) {
       const isLoggedIn = !!auth?.user;
-      
-      // Paths requiring login
-      const protectedPaths = ["/dashboard", "/profile", "/properties/add", "/properties/edit"];
-      const isProtectedPath = protectedPaths.some((path) =>
-        nextUrl.pathname.startsWith(path)
-      );
+      const userRole = (auth?.user as any)?.role;
+      const hasAdminCookie = cookies.get("admin_session")?.value === "true";
+      const isAdmin = userRole === "ADMIN" || hasAdminCookie;
 
-      // Paths that should not be visible when logged in (redirect to dashboard)
+      const pathname = nextUrl.pathname;
+
+      // ── Admin routes protection ──
+      if (pathname.startsWith("/admin")) {
+        // Allow access to /admin/login for unauthenticated users
+        if (pathname === "/admin/login") {
+          if (isAdmin) {
+            return Response.redirect(new URL("/admin", nextUrl));
+          }
+          return true;
+        }
+
+        // Block non-admin users (or logged-in users with role !== "ADMIN") from all /admin/* routes
+        if (!isAdmin) {
+          return Response.redirect(new URL("/unauthorized", nextUrl));
+        }
+
+        return true;
+      }
+
+      // ── Protected user routes ──
+      const protectedPaths = ["/dashboard", "/profile", "/properties/add", "/properties/edit"];
+      const isProtectedPath = protectedPaths.some((path) => pathname.startsWith(path));
+
+      // ── Auth page routes ──
       const authPaths = ["/login", "/register"];
-      const isAuthPath = authPaths.some((path) =>
-        nextUrl.pathname.startsWith(path)
-      );
+      const isAuthPath = authPaths.some((path) => pathname.startsWith(path));
 
       if (isProtectedPath) {
         if (isLoggedIn) return true;

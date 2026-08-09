@@ -10,9 +10,9 @@ export default async function AdminPage() {
 
   const isAdmin = session?.user?.role === "ADMIN" || hasAdminCookie;
 
-  // Redirect to admin login if not authenticated as admin
+  // Redirect to unauthorized if not an admin
   if (!isAdmin) {
-    redirect("/admin/login");
+    redirect("/unauthorized");
   }
 
   return (
